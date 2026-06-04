@@ -86,6 +86,15 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             case "hidetooltips":
                 handleHideTooltips(player, item, args);
                 break;
+            case "reload":
+                if (!player.hasPermission("itemedit.admin")) {
+                    player.sendMessage("§cYou do not have permission to reload the configuration.");
+                    return true;
+                }
+                plugin.reloadConfig();
+                plugin.getWeaponConfigManager().reload();
+                player.sendMessage("§aItemEdit configuration and weapon.yml successfully reloaded!");
+                break;
             default:
                 sendHelp(player);
                 break;
@@ -109,6 +118,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         player.sendMessage("§e/ie ability <add/remove/clear/list> [ability] §7- Manages item abilities.");
         player.sendMessage("§e/ie custom <ability> <param> <value> §7- Overrides ability values.");
         player.sendMessage("§e/ie hidetooltips [true/false] §7- Hides or shows item tooltips.");
+        player.sendMessage("§e/ie reload §7- Reloads config.yml and weapon.yml files.");
     }
 
     private Component parseText(String text) {
@@ -498,9 +508,54 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             }
             current.add(abilityId);
             plugin.getAbilityManager().setItemAbilities(item, current);
+
+            // Setup weapon key in PDC and save in weapon.yml
+            ItemMeta meta = item.getItemMeta();
+            org.bukkit.persistence.PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            String weaponKey;
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+            } else {
+                String rawName = meta.hasDisplayName() ? LegacyComponentSerializer.legacySection().serialize(meta.displayName()) : item.getType().name();
+                String cleanName = rawName.replaceAll("(?i)§[0-9a-fk-orx]", "")
+                        .replaceAll("<[^>]*>", "")
+                        .replaceAll("[^a-zA-Z0-9_]", "_")
+                        .toLowerCase();
+                if (cleanName.isEmpty() || cleanName.replaceAll("_", "").isEmpty()) {
+                    cleanName = item.getType().name().toLowerCase();
+                }
+                weaponKey = cleanName + "_" + (System.currentTimeMillis() % 10000);
+                pdc.set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
+                item.setItemMeta(meta);
+            }
+
+            // Save settings in weapon.yml
+            org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+            String pathPrefix = "weapons." + weaponKey;
+            weaponCfg.set(pathPrefix + ".material", item.getType().name());
+            if (meta.hasDisplayName()) {
+                weaponCfg.set(pathPrefix + ".display-name", LegacyComponentSerializer.legacySection().serialize(meta.displayName()));
+            }
+            weaponCfg.set(pathPrefix + ".abilities", current);
+
+            String settingsPath = pathPrefix + ".settings." + abilityId;
+            if (!weaponCfg.contains(settingsPath)) {
+                weaponCfg.set(settingsPath + ".cooldown", 5.0);
+                if (plugin.getConfig().contains("abilities." + abilityId)) {
+                    org.bukkit.configuration.ConfigurationSection section = plugin.getConfig().getConfigurationSection("abilities." + abilityId);
+                    if (section != null) {
+                        for (String key : section.getKeys(false)) {
+                            weaponCfg.set(settingsPath + "." + key, plugin.getConfig().get("abilities." + abilityId + "." + key));
+                        }
+                    }
+                }
+            }
+            plugin.getWeaponConfigManager().save();
+
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aAdded ability '" + ability.getName() + "' to your item.");
+            player.sendMessage("§aAdded ability '" + ability.getName() + "' and registered in weapon.yml (Key: " + weaponKey + ").");
         } else if (operation.equalsIgnoreCase("remove")) {
             if (!current.contains(abilityId)) {
                 player.sendMessage("§cThis item does not have this ability.");
@@ -508,9 +563,22 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             }
             current.remove(abilityId);
             plugin.getAbilityManager().setItemAbilities(item, current);
+
+            ItemMeta meta = item.getItemMeta();
+            org.bukkit.persistence.PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+                org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                String pathPrefix = "weapons." + weaponKey;
+                weaponCfg.set(pathPrefix + ".abilities", current);
+                weaponCfg.set(pathPrefix + ".settings." + abilityId, null);
+                plugin.getWeaponConfigManager().save();
+            }
+
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aRemoved ability '" + abilityId + "' from your item.");
+            player.sendMessage("§aRemoved ability '" + abilityId + "' and updated weapon.yml.");
         } else {
             player.sendMessage("§cUnknown operation. Use add, remove, or list.");
         }
@@ -559,7 +627,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return filter(Arrays.asList("rename", "lore", "enchant", "unbreakable", "flag", "attribute", "ability", "custom", "gui", "hidetooltips"), args[0]);
+            return filter(Arrays.asList("rename", "lore", "enchant", "unbreakable", "flag", "attribute", "ability", "custom", "gui", "hidetooltips", "reload"), args[0]);
         }
 
         if (args.length == 2) {

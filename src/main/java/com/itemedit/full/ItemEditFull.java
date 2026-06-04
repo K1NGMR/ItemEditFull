@@ -3,17 +3,23 @@ package com.itemedit.full;
 import com.itemedit.full.ability.AbilityManager;
 import com.itemedit.full.ability.lava.*;
 import com.itemedit.full.command.ItemEditCommand;
+import com.itemedit.full.config.WeaponConfigManager;
 import com.itemedit.full.gui.ItemEditGui;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class ItemEditFull extends JavaPlugin {
     private AbilityManager abilityManager;
     private ItemEditGui guiManager;
+    private WeaponConfigManager weaponConfigManager;
 
     @Override
     public void onEnable() {
         // Save config
         saveDefaultConfig();
+
+        // Initialize Weapon Config Manager
+        weaponConfigManager = new WeaponConfigManager(this);
+        weaponConfigManager.setup();
 
         // Initialize Ability Manager
         abilityManager = new AbilityManager(this);
@@ -64,6 +70,10 @@ public final class ItemEditFull extends JavaPlugin {
 
     public ItemEditGui getGuiManager() {
         return guiManager;
+    }
+
+    public WeaponConfigManager getWeaponConfigManager() {
+        return weaponConfigManager;
     }
 
     @Override

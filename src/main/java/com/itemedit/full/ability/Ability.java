@@ -39,11 +39,27 @@ public abstract class Ability {
         if (item != null && item.hasItemMeta()) {
             ItemMeta meta = item.getItemMeta();
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            
+            // 1. Check PDC custom override
             NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
-            if (pdc.has(key, PersistentDataType.DOUBLE)) {
-                return pdc.get(key, PersistentDataType.DOUBLE);
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.DOUBLE)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.DOUBLE);
+            }
+            
+            // 2. Check weapon.yml configuration
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+                if (weaponKey != null) {
+                    org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                    String path = "weapons." + weaponKey + ".settings." + id + "." + param;
+                    if (weaponCfg.contains(path)) {
+                        return weaponCfg.getDouble(path);
+                    }
+                }
             }
         }
+        // 3. Fallback to standard config.yml
         return plugin.getConfig().getDouble("abilities." + id + "." + param, defaultValue);
     }
 
@@ -51,11 +67,27 @@ public abstract class Ability {
         if (item != null && item.hasItemMeta()) {
             ItemMeta meta = item.getItemMeta();
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            
+            // 1. Check PDC custom override
             NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
-            if (pdc.has(key, PersistentDataType.INTEGER)) {
-                return pdc.get(key, PersistentDataType.INTEGER);
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.INTEGER);
+            }
+            
+            // 2. Check weapon.yml configuration
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+                if (weaponKey != null) {
+                    org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                    String path = "weapons." + weaponKey + ".settings." + id + "." + param;
+                    if (weaponCfg.contains(path)) {
+                        return weaponCfg.getInt(path);
+                    }
+                }
             }
         }
+        // 3. Fallback to standard config.yml
         return plugin.getConfig().getInt("abilities." + id + "." + param, defaultValue);
     }
 
