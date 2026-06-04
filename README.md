@@ -14,12 +14,16 @@
 ## 🚀 Key Features
 
 * **🖥️ Interactive GUI Editor**: Run `/ie gui` to customize items visually inside a chest menu (manage flags, lore, enchants, attributes, and abilities).
-* **121 Premium Abilities**: Includes all Light abilities, plus 71 premium-exclusive abilities:
+* **250 Premium Abilities**: Includes all Light abilities, plus 200 premium-exclusive abilities:
   - **Spiders & Cave Spiders**: Web shooters, arachnid pounce, toxic bites, scurrying speed.
   - **Ender Dragon**: Dragon roar, wing buffet, breath volley, dragon egg bomb.
   - **Wither**: Wither skull volley, wither shield, decaying presence aura, health absorption.
   - **Lava premium**: Premium lava abilities like `lava_absorption`.
   - **Overworld & General premium**: Custom extra elemental strikes, and more.
+  - **Nether Expansion**: Magma shields, blazes flight, blaze barrages, ghast fireballs.
+  - **Ocean & Sky**: Guardian beams, drowned tridents, phantoms swoops, breezes gust.
+  - **Sculk, Ice & Desert**: Shriekers sensors, ice spikes, husk heat, shulkers bullets.
+  - **Combat Strikes**: Tsunami slash, cosmic rift, vampiric edge, phoenix strike, sculk shatter.
 * **🔧 Custom Param Overrides (`/ie custom`)**: Override ability-specific stats per weapon (e.g. modify cooldowns, radius, fire ticks, damage, or healing rates on individual items).
 * **🛡️ Self-Damage Protection**: Built-in mechanism to prevent players from taking damage from their own abilities (e.g., custom lightning, projectiles, or explosion effects).
 * **Command Suite**:
