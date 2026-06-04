@@ -146,6 +146,28 @@ public class MoreExpansionAbilities implements Listener {
         plugin.getAbilityManager().registerAbility(new EnderSwapStrike(plugin));
         plugin.getAbilityManager().registerAbility(new LunarBlessing(plugin));
 
+        // ValoBox Weapon & Meteor Abilities
+        plugin.getAbilityManager().registerAbility(new SpawnTntAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new LaunchFireballAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new ShootWardenBeamAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new SonicBoomAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new SummonFriendAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new AoeAttackAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new GiantSwordAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new OrbitalTntAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new GroundPoundAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new PainAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new VenomSpitAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new WebShootAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new SpiderSwarmAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new ArachnidJumpAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new ShootWitherSkullAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new ShootSkeletonSkullAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new MeteorStrikeAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new HugeMeteorStrikeAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new MassiveMeteorStrikeAbility(plugin));
+        plugin.getAbilityManager().registerAbility(new GalaxyMeteorStrikeAbility(plugin));
+
         plugin.getServer().getPluginManager().registerEvents(new MoreExpansionAbilities(), plugin);
     }
 
@@ -180,6 +202,20 @@ public class MoreExpansionAbilities implements Listener {
                 LivingEntity le = (LivingEntity) event.getHitEntity();
                 if (!le.equals(proj.getShooter())) {
                     le.damage(4.0, (Entity) proj.getShooter());
+                }
+            }
+        } else if (proj.hasMetadata("venom_spit")) {
+            hitLoc.getWorld().spawnParticle(Particle.SLIME, hitLoc, 15, 0.3, 0.3, 0.3, 0.05);
+            hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_LLAMA_SPIT, 1f, 0.6f);
+            double radius = proj.getMetadata("venom_spit_radius").isEmpty() ? 3.0 : proj.getMetadata("venom_spit_radius").get(0).asDouble();
+            double damage = proj.getMetadata("venom_spit_damage").isEmpty() ? 4.0 : proj.getMetadata("venom_spit_damage").get(0).asDouble();
+            int duration = proj.getMetadata("venom_spit_duration").isEmpty() ? 140 : proj.getMetadata("venom_spit_duration").get(0).asInt();
+            int amp = proj.getMetadata("venom_spit_amplifier").isEmpty() ? 1 : proj.getMetadata("venom_spit_amplifier").get(0).asInt();
+            for (Entity ent : hitLoc.getWorld().getNearbyEntities(hitLoc, radius, radius, radius)) {
+                if (ent instanceof LivingEntity && !ent.equals(proj.getShooter())) {
+                    LivingEntity le = (LivingEntity) ent;
+                    le.damage(damage, (Entity) proj.getShooter());
+                    le.addPotionEffect(new PotionEffect(PotionEffectType.POISON, duration, amp));
                 }
             }
         }
@@ -1877,3 +1913,959 @@ class LunarBlessing extends Ability {
     public LunarBlessing(ItemEditFull pl) { super("lunar_blessing", "Lunar Blessing", "Night speed stats."); }
     @Override public boolean trigger(Player p, ItemStack i) { p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 600, 0)); return true; }
 }
+
+class SpawnTntAbility extends Ability {
+    private final ItemEditFull plugin;
+    public SpawnTntAbility(ItemEditFull pl) { super("spawn_tnt", "Spawn TNT", "Launches primed TNT forward."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "count", 1);
+        double velocity = getDoubleParam(plugin, item, "velocity", 1.2);
+        double spread = getDoubleParam(plugin, item, "spread", 0.02);
+        double yield = getDoubleParam(plugin, item, "yield", 4.0);
+        boolean incendiary = getBooleanParam(plugin, item, "incendiary", false);
+        int fuseTicks = getIntParam(plugin, item, "fuse-ticks", 40);
+
+        Vector dir = p.getLocation().getDirection().clone().normalize();
+        Location base = p.getEyeLocation().add(dir.multiply(1.0));
+        for (int i = 0; i < count; i++) {
+            Vector v = dir.clone();
+            if (spread > 0) {
+                v.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+            }
+            v.normalize().multiply(velocity);
+            TNTPrimed tnt = p.getWorld().spawn(base, TNTPrimed.class);
+            tnt.setFuseTicks(fuseTicks);
+            tnt.setVelocity(v);
+            tnt.setYield((float) yield);
+            tnt.setIsIncendiary(incendiary);
+        }
+        return true;
+    }
+}
+
+class LaunchFireballAbility extends Ability {
+    private final ItemEditFull plugin;
+    public LaunchFireballAbility(ItemEditFull pl) { super("launch_fireball", "Launch Fireball", "Launches large fireballs."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "count", 1);
+        double velocity = getDoubleParam(plugin, item, "velocity", 1.2);
+        double spread = getDoubleParam(plugin, item, "spread", 0.02);
+        double yield = getDoubleParam(plugin, item, "yield", 2.0);
+        boolean incendiary = getBooleanParam(plugin, item, "incendiary", false);
+
+        Vector dir = p.getLocation().getDirection().clone().normalize();
+        for (int i = 0; i < count; i++) {
+            Vector v = dir.clone();
+            if (spread > 0) {
+                v.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+            }
+            v.normalize().multiply(velocity);
+            LargeFireball fireball = p.launchProjectile(LargeFireball.class);
+            fireball.setVelocity(v);
+            fireball.setYield((float) yield);
+            fireball.setIsIncendiary(incendiary);
+            fireball.setShooter(p);
+        }
+        return true;
+    }
+}
+
+class ShootWardenBeamAbility extends Ability {
+    private final ItemEditFull plugin;
+    public ShootWardenBeamAbility(ItemEditFull pl) { super("shoot_warden_beam", "Warden Beam", "Fires a sonic warden beam."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "count", 1);
+        double range = getDoubleParam(plugin, item, "range", 20.0);
+        double damage = getDoubleParam(plugin, item, "damage", 10.0);
+        double knockback = getDoubleParam(plugin, item, "knockback", 0.4);
+        double spread = getDoubleParam(plugin, item, "spread", 0.02);
+        double trailStep = getDoubleParam(plugin, item, "trail-step", 0.5);
+        String trailParticleStr = getStringParam(plugin, item, "trail-particle", "END_ROD");
+        String impactParticleStr = getStringParam(plugin, item, "impact-particle", "SONIC_BOOM");
+        String soundStr = getStringParam(plugin, item, "sound", "ENTITY_WARDEN_SONIC_BOOM");
+
+        Particle trailParticle = Particle.END_ROD;
+        try { trailParticle = Particle.valueOf(trailParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Particle impactParticle = Particle.SONIC_BOOM;
+        try { impactParticle = Particle.valueOf(impactParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Sound sound = Sound.ENTITY_WARDEN_SONIC_BOOM;
+        try { sound = Sound.valueOf(soundStr.toUpperCase()); } catch (Exception ignored) {}
+
+        Vector dir = p.getEyeLocation().getDirection().clone().normalize();
+        Location start = p.getEyeLocation();
+        World world = p.getWorld();
+        Vector startVec = start.toVector();
+
+        for (int i = 0; i < count; i++) {
+            Vector shotDir = dir.clone();
+            if (spread > 0) {
+                shotDir.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+            }
+            shotDir.normalize();
+
+            org.bukkit.util.RayTraceResult entityHit = world.rayTraceEntities(start, shotDir, range, 0.75, entity -> entity != p);
+            org.bukkit.util.RayTraceResult blockHit = world.rayTraceBlocks(start, shotDir, range);
+
+            double entityDistance = entityHit == null ? Double.POSITIVE_INFINITY : entityHit.getHitPosition().distance(startVec);
+            double blockDistance = blockHit == null ? Double.POSITIVE_INFINITY : blockHit.getHitPosition().distance(startVec);
+            double hitDistance = Math.min(entityDistance, blockDistance);
+            if (Double.isInfinite(hitDistance)) {
+                hitDistance = range;
+            }
+
+            double d = 0.0;
+            Location current = start.clone();
+            Vector step = shotDir.clone().multiply(trailStep);
+            while (d < hitDistance) {
+                world.spawnParticle(trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
+                current.add(step);
+                d += trailStep;
+            }
+
+            Location hitLoc = start.clone().add(shotDir.clone().multiply(hitDistance));
+            world.spawnParticle(impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
+            world.playSound(hitLoc, sound, 1.0f, 1.0f);
+
+            if (entityDistance <= blockDistance && entityHit != null && entityHit.getHitEntity() instanceof LivingEntity) {
+                LivingEntity living = (LivingEntity) entityHit.getHitEntity();
+                living.damage(damage, p);
+                if (knockback != 0.0) {
+                    Vector kb = shotDir.clone().multiply(knockback);
+                    kb.setY(Math.max(0.0, kb.getY()));
+                    living.setVelocity(living.getVelocity().add(kb));
+                }
+            }
+        }
+        return true;
+    }
+}
+
+class SonicBoomAbility extends Ability {
+    private final ItemEditFull plugin;
+    public SonicBoomAbility(ItemEditFull pl) { super("sonic_boom", "Sonic Boom", "Fires a sonic boom wave."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "count", 1);
+        double range = getDoubleParam(plugin, item, "range", 20.0);
+        double damage = getDoubleParam(plugin, item, "damage", 10.0);
+        double knockback = getDoubleParam(plugin, item, "knockback", 0.4);
+        double spread = getDoubleParam(plugin, item, "spread", 0.01);
+        double trailStep = getDoubleParam(plugin, item, "trail-step", 0.5);
+        String trailParticleStr = getStringParam(plugin, item, "trail-particle", "SONIC_BOOM");
+        String impactParticleStr = getStringParam(plugin, item, "impact-particle", "SONIC_BOOM");
+        String soundStr = getStringParam(plugin, item, "sound", "ENTITY_WARDEN_SONIC_BOOM");
+
+        Particle trailParticle = Particle.SONIC_BOOM;
+        try { trailParticle = Particle.valueOf(trailParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Particle impactParticle = Particle.SONIC_BOOM;
+        try { impactParticle = Particle.valueOf(impactParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Sound sound = Sound.ENTITY_WARDEN_SONIC_BOOM;
+        try { sound = Sound.valueOf(soundStr.toUpperCase()); } catch (Exception ignored) {}
+
+        Vector dir = p.getEyeLocation().getDirection().clone().normalize();
+        Location start = p.getEyeLocation();
+        World world = p.getWorld();
+        Vector startVec = start.toVector();
+
+        for (int i = 0; i < count; i++) {
+            world.playSound(start, sound, 1.0f, 1.0f);
+            Vector shotDir = dir.clone();
+            if (spread > 0) {
+                shotDir.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+            }
+            shotDir.normalize();
+
+            org.bukkit.util.RayTraceResult entityHit = world.rayTraceEntities(start, shotDir, range, 0.75, entity -> entity != p);
+            org.bukkit.util.RayTraceResult blockHit = world.rayTraceBlocks(start, shotDir, range);
+
+            double entityDistance = entityHit == null ? Double.POSITIVE_INFINITY : entityHit.getHitPosition().distance(startVec);
+            double blockDistance = blockHit == null ? Double.POSITIVE_INFINITY : blockHit.getHitPosition().distance(startVec);
+            double hitDistance = Math.min(entityDistance, blockDistance);
+            if (Double.isInfinite(hitDistance)) {
+                hitDistance = range;
+            }
+
+            Vector basisA = Math.abs(shotDir.getX()) < 0.9 ? new Vector(1, 0, 0) : new Vector(0, 1, 0);
+            Vector u = shotDir.clone().crossProduct(basisA).normalize();
+            Vector v = shotDir.clone().crossProduct(u).normalize();
+
+            double radius = 0.45;
+            double frequency = 10.0;
+            double d = 0.0;
+            Location current = start.clone();
+            Vector step = shotDir.clone().multiply(trailStep);
+            while (d < hitDistance) {
+                double angle = d * frequency;
+                double cos = Math.cos(angle) * radius;
+                double sin = Math.sin(angle) * radius;
+                double ox = u.getX() * cos + v.getX() * sin;
+                double oy = u.getY() * cos + v.getY() * sin;
+                double oz = u.getZ() * cos + v.getZ() * sin;
+                current.add(ox, oy, oz);
+                world.spawnParticle(trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
+                current.subtract(ox, oy, oz);
+                current.add(step);
+                d += trailStep;
+            }
+
+            Location hitLoc = start.clone().add(shotDir.clone().multiply(hitDistance));
+            world.spawnParticle(impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
+
+            if (entityDistance <= blockDistance && entityHit != null && entityHit.getHitEntity() instanceof LivingEntity) {
+                LivingEntity living = (LivingEntity) entityHit.getHitEntity();
+                living.damage(damage, p);
+                if (knockback != 0.0) {
+                    Vector kb = shotDir.clone().multiply(knockback);
+                    kb.setY(Math.max(0.0, kb.getY()));
+                    living.setVelocity(living.getVelocity().add(kb));
+                }
+            }
+        }
+        return true;
+    }
+}
+
+class SummonFriendAbility extends Ability {
+    private final ItemEditFull plugin;
+    public SummonFriendAbility(ItemEditFull pl) { super("summon_friend", "Summon Friend", "Summons assistant mobs."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "count", 5);
+        String mobName = getStringParam(plugin, item, "mob", "PIG");
+        double speed = getDoubleParam(plugin, item, "speed", 0.35);
+        int lifetimeSeconds = getIntParam(plugin, item, "lifetime-seconds", 30);
+        double health = getDoubleParam(plugin, item, "health", 10.0);
+
+        EntityType type = EntityType.PIG;
+        try { type = EntityType.valueOf(mobName.toUpperCase()); } catch (Exception ignored) {}
+
+        final EntityType finalType = type;
+        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_EVOKER_PREPARE_SUMMON, 1f, 1f);
+        for (int i = 0; i < count; i++) {
+            Location loc = p.getLocation().add((Math.random() - 0.5) * 4, 0, (Math.random() - 0.5) * 4);
+            Entity ent = p.getWorld().spawn(loc, finalType.getEntityClass());
+            if (ent instanceof LivingEntity) {
+                LivingEntity friend = (LivingEntity) ent;
+                friend.setCustomName("§d" + p.getName() + "'s Friend");
+                friend.setCustomNameVisible(true);
+                if (health > 0) {
+                    friend.setMaxHealth(health);
+                    friend.setHealth(health);
+                }
+                if (friend instanceof Mob) {
+                    Mob mob = (Mob) friend;
+                    for (Entity target : mob.getNearbyEntities(15, 5, 15)) {
+                        if (target instanceof Monster) {
+                            mob.setTarget((LivingEntity) target);
+                            break;
+                        }
+                    }
+                }
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        if (friend.isValid()) {
+                            friend.getWorld().spawnParticle(Particle.CLOUD, friend.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
+                            friend.remove();
+                        }
+                    }
+                }.runTaskLater(plugin, lifetimeSeconds * 20L);
+            }
+        }
+        return true;
+    }
+}
+
+class AoeAttackAbility extends Ability {
+    private final ItemEditFull plugin;
+    public AoeAttackAbility(ItemEditFull pl) { super("aoe_attack", "AOE Attack", "Deals periodic area damage."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        double radius = getDoubleParam(plugin, item, "range", 4.0);
+        double damage = getDoubleParam(plugin, item, "damage", 6.0);
+        int indicatorSeconds = getIntParam(plugin, item, "indicator-seconds", 1);
+        int points = getIntParam(plugin, item, "points", 48);
+        double yOffset = getDoubleParam(plugin, item, "y-offset", 0.1);
+        String particleStr = getStringParam(plugin, item, "particle", "REDSTONE");
+        double damageIntervalSeconds = getDoubleParam(plugin, item, "damage-interval-seconds", 1.0);
+
+        Particle particle = Particle.REDSTONE;
+        try { particle = Particle.valueOf(particleStr.toUpperCase()); } catch (Exception ignored) {}
+
+        final Particle finalParticle = particle;
+        World world = p.getWorld();
+        Location center = p.getLocation().clone();
+        world.playSound(center, Sound.BLOCK_BEACON_AMBIENT, 1.0f, 1.0f);
+        double radiusSq = radius * radius;
+        int totalTicks = indicatorSeconds * 20;
+        int intervalTicks = (int) (damageIntervalSeconds * 20);
+
+        new BukkitRunnable() {
+            int t = 0;
+            @Override public void run() {
+                if (!p.isOnline() || t >= totalTicks) {
+                    cancel();
+                    return;
+                }
+                if (t % intervalTicks == 0) {
+                    for (LivingEntity living : world.getLivingEntities()) {
+                        if (!living.equals(p) && !living.isDead() && living.getLocation().distanceSquared(center) <= radiusSq) {
+                            living.damage(damage, p);
+                        }
+                    }
+                }
+                for (int i = 0; i < points; i++) {
+                    double angle = (Math.PI * 2.0) * (i / (double) points);
+                    double x = Math.cos(angle) * radius;
+                    double z = Math.sin(angle) * radius;
+                    Location pt = center.clone().add(x, yOffset, z);
+                    if (finalParticle == Particle.REDSTONE) {
+                        world.spawnParticle(finalParticle, pt, 1, 0.0, 0.0, 0.0, 0.0, new Particle.DustOptions(Color.RED, 1.2f));
+                    } else {
+                        world.spawnParticle(finalParticle, pt, 1, 0.0, 0.0, 0.0, 0.0);
+                    }
+                }
+                t++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+        return true;
+    }
+}
+
+class GiantSwordAbility extends Ability {
+    private final ItemEditFull plugin;
+    public GiantSwordAbility(ItemEditFull pl) { super("giant_sword", "Giant Sword", "Summons a giant falling sword."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        double range = getDoubleParam(plugin, item, "range", 25.0);
+        double radius = getDoubleParam(plugin, item, "radius", 4.0);
+        double damage = getDoubleParam(plugin, item, "damage", 20.0);
+        double knockback = getDoubleParam(plugin, item, "knockback", 0.8);
+        int height = getIntParam(plugin, item, "height", 18);
+        int fallTicks = getIntParam(plugin, item, "fall-ticks", 12);
+        double size = getDoubleParam(plugin, item, "size", 2.5);
+        int staySeconds = getIntParam(plugin, item, "stay-seconds", 5);
+        String swordMaterialStr = getStringParam(plugin, item, "sword-material", "NETHERITE_SWORD");
+        String trailParticleStr = getStringParam(plugin, item, "trail-particle", "CRIT");
+        String impactParticleStr = getStringParam(plugin, item, "impact-particle", "EXPLOSION_NORMAL");
+        String soundStr = getStringParam(plugin, item, "sound", "BLOCK_ANVIL_LAND");
+
+        Material swordMat = Material.NETHERITE_SWORD;
+        try { swordMat = Material.valueOf(swordMaterialStr.toUpperCase()); } catch (Exception ignored) {}
+        Particle trailParticle = Particle.CRIT;
+        try { trailParticle = Particle.valueOf(trailParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Particle impactParticle = Particle.EXPLOSION_NORMAL;
+        try { impactParticle = Particle.valueOf(impactParticleStr.toUpperCase()); } catch (Exception ignored) {}
+        Sound sound = Sound.BLOCK_ANVIL_LAND;
+        try { sound = Sound.valueOf(soundStr.toUpperCase()); } catch (Exception ignored) {}
+
+        World world = p.getWorld();
+        Vector dir = p.getEyeLocation().getDirection().clone().normalize();
+        Location start = p.getEyeLocation();
+        org.bukkit.util.RayTraceResult hit = world.rayTraceBlocks(start, dir, range);
+        Location impact = hit != null ? hit.getHitPosition().toLocation(world) : start.clone().add(dir.multiply(range));
+
+        org.bukkit.util.RayTraceResult down = world.rayTraceBlocks(impact, new Vector(0, -1, 0), 128.0);
+        if (down != null) {
+            impact = down.getHitPosition().toLocation(world);
+        }
+        final Location impactLoc = impact.getBlock().getLocation().add(0.5, 1.0, 0.5);
+        Location spawnLoc = impactLoc.clone().add(0, height, 0);
+
+        float fSize = (float) size;
+        ItemStack swordItem = new ItemStack(swordMat);
+        ItemDisplay display = world.spawn(spawnLoc, ItemDisplay.class, d -> {
+            d.setItemStack(swordItem);
+            d.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+            org.bukkit.util.Transformation transformation = new org.bukkit.util.Transformation(
+                    new org.joml.Vector3f(0.0f, 0.0f, 0.0f),
+                    new org.joml.Quaternionf().rotateX((float) (Math.PI / 2.0)),
+                    new org.joml.Vector3f(fSize, fSize, fSize),
+                    new org.joml.Quaternionf()
+            );
+            d.setTransformation(transformation);
+        });
+
+        final Particle finalTrail = trailParticle;
+        final Particle finalImpact = impactParticle;
+        final Sound finalSound = sound;
+        final double radiusSq = radius * radius;
+
+        new BukkitRunnable() {
+            int t = 0;
+            @Override public void run() {
+                if (!display.isValid()) {
+                    cancel();
+                    return;
+                }
+                t++;
+                double progress = Math.min(1.0, t / (double) fallTicks);
+                double y = spawnLoc.getY() - (height * progress);
+                Location next = new Location(world, spawnLoc.getX(), y, spawnLoc.getZ(), 0.0f, 0.0f);
+                display.teleport(next);
+                world.spawnParticle(finalTrail, next, 2, 0.05, 0.05, 0.05, 0.0);
+
+                if (t >= fallTicks) {
+                    display.teleport(impactLoc);
+                    world.spawnParticle(finalImpact, impactLoc, 20, 0.6, 0.2, 0.6, 0.05);
+                    world.playSound(impactLoc, finalSound, 1f, 1f);
+                    for (LivingEntity living : world.getLivingEntities()) {
+                        if (!living.equals(p) && !living.isDead() && living.getLocation().distanceSquared(impactLoc) <= radiusSq) {
+                            living.damage(damage, p);
+                            if (knockback != 0.0) {
+                                Vector kb = living.getLocation().toVector().subtract(impactLoc.toVector()).normalize().multiply(knockback).setY(0.4);
+                                living.setVelocity(living.getVelocity().add(kb));
+                            }
+                        }
+                    }
+                    new BukkitRunnable() {
+                        @Override public void run() {
+                            if (display.isValid()) display.remove();
+                        }
+                    }.runTaskLater(plugin, staySeconds * 20L);
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+
+        return true;
+    }
+}
+
+class OrbitalTntAbility extends Ability {
+    private final ItemEditFull plugin;
+    public OrbitalTntAbility(ItemEditFull pl) { super("orbital_tnt", "Orbital TNT", "Calls down TNT around the player."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        int count = getIntParam(plugin, item, "tnt-count", 8);
+        int rows = getIntParam(plugin, item, "tnt-rows", 1);
+        double blastRadius = getDoubleParam(plugin, item, "blast-radius", 4.0);
+        String shape = getStringParam(plugin, item, "shape", "circle");
+        int height = getIntParam(plugin, item, "height", 18);
+
+        Location center = p.getLocation().clone();
+        double baseRadius = 5.0;
+
+        for (int row = 0; row < rows; row++) {
+            double currentRadius = baseRadius + (row * 3.0);
+            int tntsInRow = count / rows;
+            if (row == rows - 1) {
+                tntsInRow += count % rows;
+            }
+            if (tntsInRow <= 0) continue;
+
+            if (shape.equalsIgnoreCase("circle")) {
+                for (int i = 0; i < tntsInRow; i++) {
+                    double angle = (Math.PI * 2.0) * (i / (double) tntsInRow);
+                    double x = center.getX() + (Math.cos(angle) * currentRadius);
+                    double z = center.getZ() + (Math.sin(angle) * currentRadius);
+                    Location spawnLoc = new Location(center.getWorld(), x, center.getY() + height, z);
+                    TNTPrimed tnt = center.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                    tnt.setYield((float) blastRadius);
+                }
+            } else {
+                double halfSide = currentRadius;
+                double step = (halfSide * 4) / tntsInRow;
+                double currentPos = 0;
+                for (int i = 0; i < tntsInRow; i++) {
+                    double x, z;
+                    if (currentPos < halfSide) {
+                        x = center.getX() - halfSide + currentPos;
+                        z = center.getZ() + halfSide;
+                    } else if (currentPos < halfSide * 2) {
+                        x = center.getX() + halfSide;
+                        z = center.getZ() + halfSide - (currentPos - halfSide);
+                    } else if (currentPos < halfSide * 3) {
+                        x = center.getX() + halfSide - (currentPos - halfSide * 2);
+                        z = center.getZ() - halfSide;
+                    } else {
+                        x = center.getX() - halfSide;
+                        z = center.getZ() - halfSide + (currentPos - halfSide * 3);
+                    }
+                    Location spawnLoc = new Location(center.getWorld(), x, center.getY() + height, z);
+                    TNTPrimed tnt = center.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                    tnt.setYield((float) blastRadius);
+                    currentPos += step;
+                }
+            }
+        }
+        return true;
+    }
+}
+
+class GroundPoundAbility extends Ability {
+    private final ItemEditFull plugin;
+    public GroundPoundAbility(ItemEditFull pl) { super("ground_pound", "Ground Pound", "Lifts blocks and slams them."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        double radius = getDoubleParam(plugin, item, "radius", 5.0);
+        double range = getDoubleParam(plugin, item, "range", 20.0);
+        double damage = getDoubleParam(plugin, item, "damage", 10.0);
+
+        World world = p.getWorld();
+        Location playerLoc = p.getLocation();
+        world.playSound(playerLoc, Sound.ENTITY_IRON_GOLEM_ATTACK, 1f, 1f);
+
+        Vector dir = p.getEyeLocation().getDirection().clone().normalize();
+        org.bukkit.util.RayTraceResult hit = world.rayTraceBlocks(p.getEyeLocation(), dir, range);
+        Location targetLoc = hit != null ? hit.getHitPosition().toLocation(world) : p.getEyeLocation().add(dir.multiply(range));
+
+        List<Block> blocksToLift = new ArrayList<>();
+        int r = (int) Math.ceil(radius);
+        for (int x = -r; x <= r; x++) {
+            for (int z = -r; z <= r; z++) {
+                if (x * x + z * z <= radius * radius) {
+                    Block b = playerLoc.clone().add(x, -1, z).getBlock();
+                    if (b.getType() != Material.AIR && b.getType() != Material.BEDROCK) {
+                        blocksToLift.add(b);
+                    }
+                }
+            }
+        }
+
+        if (blocksToLift.isEmpty()) return false;
+
+        List<FallingBlock> fallingBlocks = new ArrayList<>();
+        for (Block b : blocksToLift) {
+            FallingBlock fb = world.spawnFallingBlock(b.getLocation().add(0.5, 1.1, 0.5), b.getType().createBlockData());
+            fb.setDropItem(false);
+            fb.setHurtEntities(false);
+            fb.setVelocity(new Vector(0, 1.2, 0));
+            fallingBlocks.add(fb);
+        }
+
+        new BukkitRunnable() {
+            @Override public void run() {
+                Location firstLoc = null;
+                for (FallingBlock fb : fallingBlocks) {
+                    if (fb.isValid()) {
+                        if (firstLoc == null) firstLoc = fb.getLocation();
+                        Vector toTarget = targetLoc.toVector().subtract(fb.getLocation().toVector()).normalize();
+                        fb.setVelocity(toTarget.multiply(2.5));
+                    }
+                }
+
+                long impactDelay = 2L;
+                if (firstLoc != null) {
+                    double dist = firstLoc.distance(targetLoc);
+                    impactDelay = Math.max(1, (long) (dist / 2.5));
+                }
+
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        world.spawnParticle(Particle.EXPLOSION_NORMAL, targetLoc, 20, 1.0, 1.0, 1.0, 0.1);
+                        world.playSound(targetLoc, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.8f);
+                        for (Entity e : world.getNearbyEntities(targetLoc, 4, 4, 4)) {
+                            if (e instanceof LivingEntity && !e.equals(p)) {
+                                ((LivingEntity) e).damage(damage, p);
+                            }
+                        }
+                        for (FallingBlock fb : fallingBlocks) {
+                            if (fb.isValid()) fb.remove();
+                        }
+                    }
+                }.runTaskLater(plugin, impactDelay);
+            }
+        }.runTaskLater(plugin, 15L);
+
+        return true;
+    }
+}
+
+class PainAbility extends Ability {
+    private final ItemEditFull plugin;
+    public PainAbility(ItemEditFull pl) { super("pain", "Almighty Push", "Shinra Tensei almighty push."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack item) {
+        double damage = getDoubleParam(plugin, item, "damage", 200.0);
+        double radius = getDoubleParam(plugin, item, "radius", 15.0);
+
+        World world = p.getWorld();
+        p.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 60, 2, false, false));
+
+        Bukkit.broadcastMessage("§4§l[" + p.getName() + "] THIS WORLD SHALL KNOW PAIN, FEEL PAIN, KNOW PAIN...");
+        
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (p.isOnline()) {
+                    Bukkit.broadcastMessage("§4§l[" + p.getName() + "] THOSE WHO DO NOT KNOW PAIN WILL NEVER UNDERSTAND TRUE PEACE.");
+                }
+            }
+        }.runTaskLater(plugin, 25L);
+
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (!p.isOnline()) return;
+                Bukkit.broadcastMessage("§c§l[" + p.getName() + "] ALMIGHTY PUSH!!!");
+                Location eyeLoc = p.getEyeLocation();
+                Vector lookDir = eyeLoc.getDirection().clone().normalize();
+                org.bukkit.util.RayTraceResult hit = world.rayTraceBlocks(eyeLoc, lookDir, 40.0);
+                Location impact = hit != null ? hit.getHitPosition().toLocation(world) : eyeLoc.clone().add(lookDir.multiply(30.0));
+
+                final Location orbLoc = eyeLoc.clone();
+                final Vector travelDir = impact.toVector().subtract(orbLoc.toVector()).normalize();
+                final double distance = orbLoc.distance(impact);
+                final int steps = (int) Math.max(1, Math.ceil(distance / 2.0));
+
+                new BukkitRunnable() {
+                    int step = 0;
+                    @Override public void run() {
+                        if (step >= steps || !orbLoc.getWorld().equals(impact.getWorld())) {
+                            world.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 5.0f, 0.4f);
+                            world.playSound(impact, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 5.0f, 0.4f);
+                            world.playSound(impact, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 5.0f, 0.4f);
+                            world.spawnParticle(Particle.EXPLOSION_HUGE, impact, 30, 2.0, 2.0, 2.0, 0.2);
+                            world.spawnParticle(Particle.EXPLOSION_LARGE, impact, 10, 2.0, 2.0, 2.0, 0.2);
+                            for (int i = 0; i < 200; i++) {
+                                double rx = (Math.random() - 0.5) * radius;
+                                double ry = (Math.random() - 0.5) * radius;
+                                double rz = (Math.random() - 0.5) * radius;
+                                world.spawnParticle(Particle.SQUID_INK, impact.clone().add(rx, ry, rz), 1, 0, 0, 0, 0);
+                                world.spawnParticle(Particle.SMOKE_LARGE, impact.clone().add(rx, ry, rz), 1, 0, 0, 0, 0.1);
+                            }
+
+                            for (Entity e : world.getNearbyEntities(impact, radius, radius, radius)) {
+                                if (e instanceof LivingEntity && !e.equals(p)) {
+                                    LivingEntity le = (LivingEntity) e;
+                                    le.damage(damage, p);
+                                    Vector push = le.getLocation().toVector().subtract(impact.toVector()).normalize().multiply(3.0).setY(1.2);
+                                    le.setVelocity(push);
+                                }
+                            }
+
+                            int r = (int) Math.ceil(radius / 1.5);
+                            for (int x = -r; x <= r; x++) {
+                                for (int y = -3; y <= 3; y++) {
+                                    for (int z = -r; z <= r; z++) {
+                                        if (x * x + z * z <= r * r && Math.random() < 0.25) {
+                                            Block b = impact.clone().add(x, y, z).getBlock();
+                                            if (b.getType() != Material.AIR && b.getType() != Material.BEDROCK) {
+                                                Material mat = b.getType();
+                                                org.bukkit.block.data.BlockData bd = mat.createBlockData();
+                                                b.setType(Material.AIR);
+                                                FallingBlock fb = world.spawnFallingBlock(b.getLocation().add(0.5, 0.5, 0.5), bd);
+                                                fb.setDropItem(false);
+                                                fb.setHurtEntities(false);
+                                                Vector blockDir = fb.getLocation().toVector().subtract(impact.toVector()).normalize();
+                                                blockDir.multiply(0.8 + Math.random() * 0.8).setY(0.6 + Math.random() * 0.8);
+                                                fb.setVelocity(blockDir);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            cancel();
+                            return;
+                        }
+                        orbLoc.add(travelDir.clone().multiply(2.0));
+                        for (int i = 0; i < 40; i++) {
+                            double offsetRatio = 1.2;
+                            double rx = (Math.random() - 0.5) * offsetRatio;
+                            double ry = (Math.random() - 0.5) * offsetRatio;
+                            double rz = (Math.random() - 0.5) * offsetRatio;
+                            world.spawnParticle(Particle.SQUID_INK, orbLoc.clone().add(rx, ry, rz), 1, 0, 0, 0, 0);
+                            world.spawnParticle(Particle.PORTAL, orbLoc.clone().add(rx, ry, rz), 1, 0, 0, 0, 0.1);
+                        }
+                        world.playSound(orbLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.5f);
+                        step++;
+                    }
+                  }.runTaskTimer(plugin, 0L, 1L);
+              }
+          }.runTaskLater(plugin, 50L);
+
+          return true;
+      }
+  }
+
+  class VenomSpitAbility extends Ability {
+      private final ItemEditFull plugin;
+      public VenomSpitAbility(ItemEditFull pl) { super("venom_spit", "Venom Spit", "Spits toxic venom."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          double damage = getDoubleParam(plugin, item, "damage", 4.0);
+          double radius = getDoubleParam(plugin, item, "radius", 3.0);
+          int duration = getIntParam(plugin, item, "duration-ticks", 140);
+          int amp = getIntParam(plugin, item, "amplifier", 1);
+          double velocity = getDoubleParam(plugin, item, "velocity", 1.8);
+
+          LlamaSpit spit = p.launchProjectile(LlamaSpit.class, p.getEyeLocation().getDirection().multiply(velocity));
+          spit.setMetadata("venom_spit", new FixedMetadataValue(plugin, true));
+          spit.setMetadata("venom_spit_damage", new FixedMetadataValue(plugin, damage));
+          spit.setMetadata("venom_spit_radius", new FixedMetadataValue(plugin, radius));
+          spit.setMetadata("venom_spit_duration", new FixedMetadataValue(plugin, duration));
+          spit.setMetadata("venom_spit_amplifier", new FixedMetadataValue(plugin, amp));
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_LLAMA_SPIT, 1f, 1f);
+          return true;
+      }
+  }
+
+  class WebShootAbility extends Ability {
+      private final ItemEditFull plugin;
+      public WebShootAbility(ItemEditFull pl) { super("web_shoot", "Web Shoot", "Shoots a cobweb trap."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          Block target = p.getTargetBlock(null, 20);
+          if (target.getType() == Material.AIR) return false;
+          Location loc = target.getLocation().add(0, 1, 0);
+          p.getWorld().spawnParticle(Particle.CLOUD, p.getEyeLocation(), 10, 0.2, 0.2, 0.2, 0.1);
+          if (loc.getBlock().getType() == Material.AIR) {
+              loc.getBlock().setType(Material.COBWEB);
+              new BukkitRunnable() {
+                  @Override public void run() {
+                      if (loc.getBlock().getType() == Material.COBWEB) loc.getBlock().setType(Material.AIR);
+                  }
+              }.runTaskLater(plugin, 100L);
+          }
+          for (Entity e : loc.getWorld().getNearbyEntities(loc, 2, 2, 2)) {
+              if (e instanceof LivingEntity && !e.equals(p)) {
+                  ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
+              }
+          }
+          return true;
+      }
+  }
+
+  class SpiderSwarmAbility extends Ability {
+      private final ItemEditFull plugin;
+      public SpiderSwarmAbility(ItemEditFull pl) { super("spider_swarm", "Spider Swarm", "Summons cave spiders."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          int count = getIntParam(plugin, item, "count", 4);
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1f, 2f);
+          for (int i = 0; i < count; i++) {
+              Location loc = p.getLocation().add(Math.random() * 2 - 1, 0, Math.random() * 2 - 1);
+              CaveSpider spider = p.getWorld().spawn(loc, CaveSpider.class);
+              spider.setCustomName("§cSwarm Spider");
+              spider.setCustomNameVisible(true);
+              new BukkitRunnable() {
+                  @Override public void run() {
+                      if (spider.isValid()) {
+                          spider.getWorld().spawnParticle(Particle.CLOUD, spider.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
+                          spider.remove();
+                      }
+                  }
+              }.runTaskLater(plugin, 200L);
+          }
+          return true;
+      }
+  }
+
+  class ArachnidJumpAbility extends Ability {
+      public ArachnidJumpAbility(ItemEditFull pl) { super("arachnid_jump", "Arachnid Jump", "Leap forward like a spider."); }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          Vector v = p.getLocation().getDirection().clone().normalize().multiply(1.5).setY(0.6);
+          p.setVelocity(v);
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_SPIDER_STEP, 1f, 0.5f);
+          return true;
+      }
+  }
+
+  class ShootWitherSkullAbility extends Ability {
+      private final ItemEditFull plugin;
+      public ShootWitherSkullAbility(ItemEditFull pl) { super("shoot_wither_skull", "Shoot Wither Skull", "Fires wither skulls."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          int count = getIntParam(plugin, item, "count", 1);
+          double velocity = getDoubleParam(plugin, item, "velocity", 1.25);
+          double spread = getDoubleParam(plugin, item, "spread", 0.01);
+          double yield = getDoubleParam(plugin, item, "yield", 2.0);
+          boolean incendiary = getBooleanParam(plugin, item, "incendiary", false);
+          int witherDurationSeconds = getIntParam(plugin, item, "wither-duration-seconds", 4);
+          int witherAmplifier = getIntParam(plugin, item, "wither-amplifier", 1);
+          boolean charged = getBooleanParam(plugin, item, "charged", false);
+
+          Vector dir = p.getLocation().getDirection().clone().normalize();
+          for (int i = 0; i < count; i++) {
+              Vector v = dir.clone();
+              if (spread > 0) {
+                  v.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+              }
+              v.normalize().multiply(velocity);
+              WitherSkull skull = p.launchProjectile(WitherSkull.class);
+              skull.setVelocity(v);
+              skull.setYield((float) yield);
+              skull.setIsIncendiary(incendiary);
+              skull.setCharged(charged);
+              skull.setShooter(p);
+              skull.setMetadata("wither_skull_bomb", new FixedMetadataValue(plugin, true));
+          }
+          return true;
+      }
+  }
+
+  class ShootSkeletonSkullAbility extends Ability {
+      private final ItemEditFull plugin;
+      public ShootSkeletonSkullAbility(ItemEditFull pl) { super("shoot_skeleton_skull", "Shoot Skeleton Skull", "Fires skeleton skull projectiles."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          int count = getIntParam(plugin, item, "count", 1);
+          double velocity = getDoubleParam(plugin, item, "velocity", 1.25);
+          double spread = getDoubleParam(plugin, item, "spread", 0.01);
+          double yield = getDoubleParam(plugin, item, "yield", 2.0);
+          boolean incendiary = getBooleanParam(plugin, item, "incendiary", false);
+
+          Vector dir = p.getLocation().getDirection().clone().normalize();
+          for (int i = 0; i < count; i++) {
+              Vector v = dir.clone();
+              if (spread > 0) {
+                  v.add(new Vector((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread));
+              }
+              v.normalize().multiply(velocity);
+              Snowball snowball = p.launchProjectile(Snowball.class);
+              snowball.setVelocity(v);
+              snowball.setShooter(p);
+              snowball.setItem(new ItemStack(Material.SKELETON_SKULL));
+              snowball.setMetadata("golden_barrage", new FixedMetadataValue(plugin, true));
+          }
+          return true;
+      }
+  }
+
+  class MeteorStrikeAbility extends Ability {
+      private final ItemEditFull plugin;
+      public MeteorStrikeAbility(ItemEditFull pl) { super("meteor_strike", "Meteor Strike", "Summons a meteor from the sky."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          Block target = p.getTargetBlock(null, 15);
+          Location loc = target.getLocation().add(0, 10, 0);
+          p.getWorld().spawn(loc, Fireball.class, fb -> {
+              fb.setDirection(new Vector(0, -1, 0));
+              fb.setYield(2f);
+              fb.setShooter(p);
+          });
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GHAST_SHOOT, 1.0f, 1.0f);
+          return true;
+      }
+  }
+
+  class HugeMeteorStrikeAbility extends Ability {
+      private final ItemEditFull plugin;
+      public HugeMeteorStrikeAbility(ItemEditFull pl) { super("huge_meteorstrike", "Huge Meteor Strike", "Summons a huge meteor."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          double damage = getDoubleParam(plugin, item, "damage", 30.0);
+          Block target = p.getTargetBlock(null, 25);
+          Location impactLoc = target.getLocation();
+          double offsetX = (Math.random() - 0.5) * 60;
+          double offsetZ = (Math.random() - 0.5) * 60;
+          Location startLoc = impactLoc.clone().add(offsetX, 40, offsetZ);
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2f, 0.5f);
+
+          new BukkitRunnable() {
+              int ticks = 0;
+              final Location current = startLoc.clone();
+              final Vector dir = impactLoc.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(1.5);
+
+              @Override public void run() {
+                  if (ticks++ > 100 || !p.isOnline()) { this.cancel(); return; }
+                  current.add(dir);
+                  current.getWorld().spawnParticle(Particle.FLAME, current, 10, 0.2, 0.2, 0.2, 0.1);
+                  current.getWorld().spawnParticle(Particle.LAVA, current, 5, 0.1, 0.1, 0.1);
+                  Block b = current.getBlock();
+                  if ((b.getType() != Material.AIR && b.getType().isSolid()) || current.getY() <= impactLoc.getY()) {
+                      current.getWorld().createExplosion(current, 8f, false, false);
+                      current.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, current, 5);
+                      for (Entity e : current.getWorld().getNearbyEntities(current, 10, 10, 10)) {
+                          if (e instanceof LivingEntity && !e.equals(p)) {
+                              LivingEntity le = (LivingEntity) e;
+                              le.damage(damage, p);
+                              le.setFireTicks(200);
+                              Vector push = le.getLocation().toVector().subtract(current.toVector()).normalize().multiply(3.0).setY(1.0);
+                              le.setVelocity(le.getVelocity().add(push));
+                          }
+                      }
+                      this.cancel();
+                  }
+              }
+          }.runTaskTimer(plugin, 0L, 1L);
+          return true;
+      }
+  }
+
+  class MassiveMeteorStrikeAbility extends Ability {
+      private final ItemEditFull plugin;
+      public MassiveMeteorStrikeAbility(ItemEditFull pl) { super("massive_meteorstrike", "Massive Meteor Strike", "Summons a massive meteor."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          double damage = getDoubleParam(plugin, item, "damage", 100.0);
+          Block target = p.getTargetBlock(null, 35);
+          Location impactLoc = target.getLocation();
+          double offsetX = (Math.random() - 0.5) * 140;
+          double offsetZ = (Math.random() - 0.5) * 140;
+          Location startLoc = impactLoc.clone().add(offsetX, 100, offsetZ);
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 5f, 0.2f);
+
+          new BukkitRunnable() {
+              int ticks = 0;
+              final Location current = startLoc.clone();
+              final Vector dir = impactLoc.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(2.0);
+
+              @Override public void run() {
+                  if (ticks++ > 200 || !p.isOnline()) { this.cancel(); return; }
+                  current.add(dir);
+                  current.getWorld().spawnParticle(Particle.FLAME, current, 30, 0.5, 0.5, 0.5, 0.2);
+                  current.getWorld().spawnParticle(Particle.LAVA, current, 15, 0.3, 0.3, 0.3);
+                  current.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, current, 2, 0.1, 0.1, 0.1);
+                  Block b = current.getBlock();
+                  if ((b.getType() != Material.AIR && b.getType().isSolid()) || current.getY() <= impactLoc.getY()) {
+                      current.getWorld().createExplosion(current, 20f, false, false);
+                      current.getWorld().spawnParticle(Particle.EXPLOSION_HUGE, current, 20, 3, 3, 3);
+                      for (Entity e : current.getWorld().getNearbyEntities(current, 25, 25, 25)) {
+                          if (e instanceof LivingEntity && !e.equals(p)) {
+                              LivingEntity le = (LivingEntity) e;
+                              le.damage(damage, p);
+                              le.setFireTicks(400);
+                              Vector push = le.getLocation().toVector().subtract(current.toVector()).normalize().multiply(5.0).setY(2.0);
+                              le.setVelocity(le.getVelocity().add(push));
+                          }
+                      }
+                      this.cancel();
+                  }
+              }
+          }.runTaskTimer(plugin, 0L, 1L);
+          return true;
+      }
+  }
+
+  class GalaxyMeteorStrikeAbility extends Ability {
+      private final ItemEditFull plugin;
+      public GalaxyMeteorStrikeAbility(ItemEditFull pl) { super("galaxy_meteorstrike", "Galaxy Meteor Strike", "Summons a devastating galaxy-sized meteor shower."); this.plugin = pl; }
+      @Override public boolean trigger(Player p, ItemStack item) {
+          double damage = getDoubleParam(plugin, item, "damage", 250.0);
+          Block target = p.getTargetBlock(null, 45);
+          Location impactLoc = target.getLocation();
+          p.getWorld().playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 5f, 0.5f);
+          p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 5f, 0.1f);
+
+          for (int m = 0; m < 5; m++) {
+              final int index = m;
+              new BukkitRunnable() {
+                  @Override public void run() {
+                      if (!p.isOnline()) return;
+                      Location individualImpact = impactLoc.clone().add((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20);
+                      double offsetX = (Math.random() - 0.5) * 150;
+                      double offsetZ = (Math.random() - 0.5) * 150;
+                      Location startLoc = individualImpact.clone().add(offsetX, 120, offsetZ);
+
+                      new BukkitRunnable() {
+                          int ticks = 0;
+                          final Location current = startLoc.clone();
+                          final Vector dir = individualImpact.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(index == 0 ? 2.5 : 2.0);
+
+                          @Override public void run() {
+                              if (ticks++ > 150 || !p.isOnline()) { this.cancel(); return; }
+                              current.add(dir);
+                              current.getWorld().spawnParticle(Particle.PORTAL, current, 45, 0.8, 0.8, 0.8, 0.15);
+                              current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 10, 0.3, 0.3, 0.3, 0.05);
+                              current.getWorld().spawnParticle(Particle.END_ROD, current, 8, 0.2, 0.2, 0.2, 0.05);
+                              Block b = current.getBlock();
+                              if ((b.getType() != Material.AIR && b.getType().isSolid()) || current.getY() <= individualImpact.getY()) {
+                                  current.getWorld().createExplosion(current, index == 0 ? 35f : 15f, false, false);
+                                  current.getWorld().spawnParticle(Particle.EXPLOSION_HUGE, current, index == 0 ? 40 : 15, 2, 2, 2);
+                                  current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 100, 3, 3, 3, 0.2);
+                                  current.getWorld().playSound(current, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 10f, 0.5f);
+
+                                  double radius = index == 0 ? 35.0 : 15.0;
+                                  for (Entity e : current.getWorld().getNearbyEntities(current, radius, radius, radius)) {
+                                      if (e instanceof LivingEntity && !e.equals(p)) {
+                                          LivingEntity le = (LivingEntity) e;
+                                          le.damage(damage / (index == 0 ? 1.0 : 2.0), p);
+                                          le.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 300, 2));
+                                          Vector push = le.getLocation().toVector().subtract(current.toVector()).normalize().multiply(index == 0 ? 8.0 : 4.0).setY(1.5);
+                                          le.setVelocity(le.getVelocity().add(push));
+                                      }
+                                  }
+                                  this.cancel();
+                              }
+                          }
+                      }.runTaskTimer(plugin, 0L, 1L);
+                  }
+              }.runTaskLater(plugin, m * 15L);
+          }
+          return true;
+      }
+  }

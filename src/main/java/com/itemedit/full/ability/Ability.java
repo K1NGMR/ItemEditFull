@@ -91,6 +91,63 @@ public abstract class Ability {
         return plugin.getConfig().getInt("abilities." + id + "." + param, defaultValue);
     }
 
+    public boolean getBooleanParam(ItemEditFull plugin, ItemStack item, String param, boolean defaultValue) {
+        if (item != null && item.hasItemMeta()) {
+            ItemMeta meta = item.getItemMeta();
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            
+            // 1. Check PDC custom override
+            NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                Byte val = pdc.get(key, org.bukkit.persistence.PersistentDataType.BYTE);
+                return val != null && val == (byte) 1;
+            }
+            
+            // 2. Check weapon.yml configuration
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+                if (weaponKey != null) {
+                    org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                    String path = "weapons." + weaponKey + ".settings." + id + "." + param;
+                    if (weaponCfg.contains(path)) {
+                        return weaponCfg.getBoolean(path);
+                    }
+                }
+            }
+        }
+        // 3. Fallback to standard config.yml
+        return plugin.getConfig().getBoolean("abilities." + id + "." + param, defaultValue);
+    }
+
+    public String getStringParam(ItemEditFull plugin, ItemStack item, String param, String defaultValue) {
+        if (item != null && item.hasItemMeta()) {
+            ItemMeta meta = item.getItemMeta();
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            
+            // 1. Check PDC custom override
+            NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.STRING)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.STRING);
+            }
+            
+            // 2. Check weapon.yml configuration
+            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
+                if (weaponKey != null) {
+                    org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                    String path = "weapons." + weaponKey + ".settings." + id + "." + param;
+                    if (weaponCfg.contains(path)) {
+                        return weaponCfg.getString(path);
+                    }
+                }
+            }
+        }
+        // 3. Fallback to standard config.yml
+        return plugin.getConfig().getString("abilities." + id + "." + param, defaultValue);
+    }
+
     public void setCustomParam(ItemEditFull plugin, ItemStack item, String param, double value) {
         if (item == null || item.getType().isAir()) return;
         ItemMeta meta = item.getItemMeta();
@@ -108,6 +165,26 @@ public abstract class Ability {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
         pdc.set(key, PersistentDataType.INTEGER, value);
+        item.setItemMeta(meta);
+    }
+
+    public void setCustomParam(ItemEditFull plugin, ItemStack item, String param, boolean value) {
+        if (item == null || item.getType().isAir()) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
+        pdc.set(key, PersistentDataType.BYTE, (byte) (value ? 1 : 0));
+        item.setItemMeta(meta);
+    }
+
+    public void setCustomParam(ItemEditFull plugin, ItemStack item, String param, String value) {
+        if (item == null || item.getType().isAir()) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
+        pdc.set(key, PersistentDataType.STRING, value);
         item.setItemMeta(meta);
     }
 
