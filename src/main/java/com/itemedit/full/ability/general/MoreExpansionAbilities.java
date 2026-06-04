@@ -23,6 +23,26 @@ import java.util.stream.Collectors;
 public class MoreExpansionAbilities implements Listener {
     private static ItemEditFull pluginInstance;
     public static ItemEditFull getPlugin() { return pluginInstance; }
+
+    public static void spawnParticleSafe(World world, Particle particle, Location loc, int count, double offsetXZ, double offsetY, double offsetZ, double extra) {
+        Class<?> dataType = particle.getDataType();
+        Object data = null;
+        if (dataType == Float.class) {
+            data = 0.0f;
+        } else if (dataType == org.bukkit.Particle.DustOptions.class) {
+            data = new org.bukkit.Particle.DustOptions(org.bukkit.Color.AQUA, 1.0f);
+        } else if (dataType == org.bukkit.block.data.BlockData.class) {
+            data = org.bukkit.Material.SCULK.createBlockData();
+        } else if (dataType == org.bukkit.inventory.ItemStack.class) {
+            data = new ItemStack(org.bukkit.Material.SCULK);
+        }
+        
+        if (data != null) {
+            world.spawnParticle(particle, loc, count, offsetXZ, offsetY, offsetZ, extra, data);
+        } else {
+            world.spawnParticle(particle, loc, count, offsetXZ, offsetY, offsetZ, extra);
+        }
+    }
     private static final Map<UUID, Long> activeManaShields = new HashMap<>();
     private static final Map<UUID, Long> activeLastStands = new HashMap<>();
     private static final Map<UUID, Long> activeResurrections = new HashMap<>();
@@ -2017,13 +2037,13 @@ class ShootWardenBeamAbility extends Ability {
             Location current = start.clone();
             Vector step = shotDir.clone().multiply(trailStep);
             while (d < hitDistance) {
-                world.spawnParticle(trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
+                MoreExpansionAbilities.spawnParticleSafe(world, trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
                 current.add(step);
                 d += trailStep;
             }
 
             Location hitLoc = start.clone().add(shotDir.clone().multiply(hitDistance));
-            world.spawnParticle(impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
+            MoreExpansionAbilities.spawnParticleSafe(world, impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
             world.playSound(hitLoc, sound, 1.0f, 1.0f);
 
             if (entityDistance <= blockDistance && entityHit != null && entityHit.getHitEntity() instanceof LivingEntity) {
@@ -2101,14 +2121,14 @@ class SonicBoomAbility extends Ability {
                 double oy = u.getY() * cos + v.getY() * sin;
                 double oz = u.getZ() * cos + v.getZ() * sin;
                 current.add(ox, oy, oz);
-                world.spawnParticle(trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
+                MoreExpansionAbilities.spawnParticleSafe(world, trailParticle, current, 1, 0.0, 0.0, 0.0, 0.0);
                 current.subtract(ox, oy, oz);
                 current.add(step);
                 d += trailStep;
             }
 
             Location hitLoc = start.clone().add(shotDir.clone().multiply(hitDistance));
-            world.spawnParticle(impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
+            MoreExpansionAbilities.spawnParticleSafe(world, impactParticle, hitLoc, 1, 0.0, 0.0, 0.0, 0.0);
 
             if (entityDistance <= blockDistance && entityHit != null && entityHit.getHitEntity() instanceof LivingEntity) {
                 LivingEntity living = (LivingEntity) entityHit.getHitEntity();
