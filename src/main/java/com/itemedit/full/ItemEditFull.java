@@ -54,6 +54,7 @@ public final class ItemEditFull extends JavaPlugin {
         com.itemedit.full.ability.general.GeneralAbilities.register(this);
         com.itemedit.full.ability.general.OverworldAbilities.register(this);
         com.itemedit.full.ability.general.MobAbilities.register(this);
+        com.itemedit.full.ability.general.NewExpansionAbilities.register(this);
     }
 
     public AbilityManager getAbilityManager() {

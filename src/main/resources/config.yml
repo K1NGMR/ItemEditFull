@@ -377,3 +377,278 @@ abilities:
     cooldown: 15.0
     radius: 5.0
     drain_damage: 4.0
+
+  # 129 New Special Abilities
+  # Nether Expansion (20)
+  magma_shield:
+    cooldown: 15.0
+  magma_jump:
+    cooldown: 8.0
+  magma_trail:
+    cooldown: 12.0
+  magma_fist:
+    cooldown: 10.0
+  blaze_speed:
+    cooldown: 10.0
+  blaze_aura:
+    cooldown: 15.0
+  blaze_flight:
+    cooldown: 12.0
+  blaze_barrage:
+    cooldown: 15.0
+  ghast_float:
+    cooldown: 15.0
+  ghast_fireball:
+    cooldown: 20.0
+  ghast_scream:
+    cooldown: 10.0
+  ghast_tear:
+    cooldown: 15.0
+  piglin_greed:
+    cooldown: 20.0
+  piglin_crossbow:
+    cooldown: 10.0
+  piglin_rage:
+    cooldown: 18.0
+  piglin_barter:
+    cooldown: 20.0
+  nether_quake:
+    cooldown: 15.0
+  nether_heat:
+    cooldown: 15.0
+  nether_portal_rift:
+    cooldown: 12.0
+  nether_soul_drain:
+    cooldown: 15.0
+
+  # Ocean / Aquatic (20)
+  guardian_beam:
+    cooldown: 10.0
+  guardian_thorns:
+    cooldown: 15.0
+  elder_guardian_fatigue:
+    cooldown: 20.0
+  elder_guardian_ghost:
+    cooldown: 15.0
+  drowned_trident:
+    cooldown: 10.0
+  drowned_water_leap:
+    cooldown: 8.0
+  drowned_conduit_power:
+    cooldown: 15.0
+  drowned_depth_strider:
+    cooldown: 15.0
+  dolphin_grace:
+    cooldown: 15.0
+  dolphin_leap:
+    cooldown: 8.0
+  dolphin_sonic:
+    cooldown: 15.0
+  turtle_shell:
+    cooldown: 15.0
+  turtle_fortitude:
+    cooldown: 15.0
+  squid_ink:
+    cooldown: 15.0
+  squid_blindness:
+    cooldown: 15.0
+  squid_propulsion:
+    cooldown: 8.0
+  fish_agility:
+    cooldown: 15.0
+  fish_water_breathing:
+    cooldown: 15.0
+  ocean_tempest:
+    cooldown: 15.0
+  ocean_tsunami:
+    cooldown: 15.0
+
+  # Sky / Aero (20)
+  phantom_glide:
+    cooldown: 15.0
+  phantom_swoop:
+    cooldown: 8.0
+  phantom_insomnia:
+    cooldown: 15.0
+  phantom_bite:
+    cooldown: 15.0
+  breeze_wind_charge:
+    cooldown: 10.0
+  breeze_deflect:
+    cooldown: 15.0
+  breeze_leap:
+    cooldown: 8.0
+  breeze_gust:
+    cooldown: 15.0
+  bat_sonar:
+    cooldown: 15.0
+  bat_screech:
+    cooldown: 15.0
+  bat_flight:
+    cooldown: 8.0
+  chicken_egg_volley:
+    cooldown: 10.0
+  chicken_feather_shield:
+    cooldown: 15.0
+  chicken_slow_fall:
+    cooldown: 15.0
+  bee_sting:
+    cooldown: 15.0
+  bee_honey_trap:
+    cooldown: 15.0
+  bee_swarm:
+    cooldown: 20.0
+  bee_pollinate:
+    cooldown: 15.0
+  sky_lightning_strike:
+    cooldown: 15.0
+  sky_zephyr:
+    cooldown: 15.0
+
+  # Ancient / Sculk (10)
+  sculk_shrieker_sound:
+    cooldown: 15.0
+  sculk_sensor_ping:
+    cooldown: 15.0
+  sculk_blindness_aura:
+    cooldown: 15.0
+  sculk_infection_strike:
+    cooldown: 15.0
+  sculk_vein_spread:
+    cooldown: 15.0
+  sculk_catalyst_heal:
+    cooldown: 15.0
+  warden_sonic_strike:
+    cooldown: 15.0
+  warden_darkness_burst:
+    cooldown: 15.0
+  warden_sculk_step:
+    cooldown: 15.0
+  warden_vibration_sense:
+    cooldown: 15.0
+
+  # Ice / Tundra (10)
+  stray_slowness_arrow:
+    cooldown: 10.0
+  stray_freeze_touch:
+    cooldown: 15.0
+  stray_snow_storm:
+    cooldown: 15.0
+  snow_golem_snowball:
+    cooldown: 10.0
+  snow_golem_trail:
+    cooldown: 15.0
+  snow_golem_freeze:
+    cooldown: 15.0
+  ice_spike_summon:
+    cooldown: 15.0
+  ice_shield:
+    cooldown: 15.0
+  ice_skate:
+    cooldown: 15.0
+  ice_frostbite:
+    cooldown: 15.0
+
+  # Desert / Mesa (10)
+  husk_hunger_strike:
+    cooldown: 15.0
+  husk_sand_storm:
+    cooldown: 15.0
+  husk_desert_heat:
+    cooldown: 15.0
+  shulker_levitation_bullet:
+    cooldown: 15.0
+  shulker_shell_close:
+    cooldown: 15.0
+  shulker_teleport:
+    cooldown: 12.0
+  desert_mirage:
+    cooldown: 15.0
+  desert_quicksand:
+    cooldown: 15.0
+  desert_cactus_thorns:
+    cooldown: 15.0
+  desert_sunstroke:
+    cooldown: 15.0
+
+  # Magical / Illager (10)
+  evoker_fangs:
+    cooldown: 15.0
+  evoker_vexes:
+    cooldown: 20.0
+  vindicator_axe_rush:
+    cooldown: 12.0
+  vindicator_rage:
+    cooldown: 15.0
+  illusioner_clone:
+    cooldown: 15.0
+  illusioner_blindness:
+    cooldown: 15.0
+  witch_potion_throw:
+    cooldown: 10.0
+  witch_potion_drink:
+    cooldown: 15.0
+  witch_brew_cauldron:
+    cooldown: 15.0
+  witch_poison_cloud:
+    cooldown: 15.0
+
+  # Legendary Combat Strikes (29)
+  flame_strike:
+    cooldown: 15.0
+  tsunami_slash:
+    cooldown: 15.0
+  wind_gust_slash:
+    cooldown: 15.0
+  void_slayer:
+    cooldown: 15.0
+  earth_smash:
+    cooldown: 15.0
+  thunder_clap:
+    cooldown: 15.0
+  holy_purify:
+    cooldown: 15.0
+  shadow_strike:
+    cooldown: 15.0
+  meteor_slam:
+    cooldown: 15.0
+  lunar_crescent:
+    cooldown: 15.0
+  solar_flare:
+    cooldown: 15.0
+  cosmic_rift:
+    cooldown: 15.0
+  plague_strike:
+    cooldown: 15.0
+  frost_giant_slam:
+    cooldown: 15.0
+  vampiric_edge:
+    cooldown: 15.0
+  reaper_scythe:
+    cooldown: 15.0
+  executioner_chop:
+    cooldown: 15.0
+  gravity_pull_strike:
+    cooldown: 15.0
+  magnetic_draw:
+    cooldown: 15.0
+  toxic_slash:
+    cooldown: 15.0
+  wither_cleave:
+    cooldown: 15.0
+  phoenix_strike:
+    cooldown: 15.0
+  glacier_crash:
+    cooldown: 15.0
+  tempest_strike:
+    cooldown: 15.0
+  sculk_shatter:
+    cooldown: 15.0
+  volcanic_rupture:
+    cooldown: 15.0
+  breeze_burst_strike:
+    cooldown: 15.0
+  dragon_claw_slash:
+    cooldown: 15.0
+  abyssal_drown_strike:
+    cooldown: 15.0
