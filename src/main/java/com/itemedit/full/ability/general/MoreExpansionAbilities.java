@@ -496,18 +496,87 @@ class AcidSpray extends Ability {
     private final ItemEditFull plugin;
     public AcidSpray(ItemEditFull pl) { super("acid_spray", "Acid Spray", "Acid spray poison."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
+        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_LLAMA_SPIT, 1.0f, 0.8f);
         Snowball b = p.launchProjectile(Snowball.class);
         b.setMetadata("acid_spray", new FixedMetadataValue(plugin, true));
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (b.isDead() || !b.isValid()) {
+                    cancel();
+                    return;
+                }
+                b.getWorld().spawnParticle(Particle.SLIME, b.getLocation(), 3, 0.1, 0.1, 0.1, 0.01);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
         return true;
     }
 }
 class AcidRain extends Ability {
-    public AcidRain(ItemEditFull pl) { super("acid_rain", "Acid Rain", "Corrosive rain."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    private final ItemEditFull plugin;
+    public AcidRain(ItemEditFull pl) { super("acid_rain", "Acid Rain", "Corrosive rain."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location target = p.getTargetBlock(null, 15).getLocation();
+        p.getWorld().playSound(target, Sound.WEATHER_RAIN, 1.0f, 0.7f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 60) {
+                    cancel();
+                    return;
+                }
+                for (int j = 0; j < 10; j++) {
+                    double rx = (Math.random() - 0.5) * 6;
+                    double rz = (Math.random() - 0.5) * 6;
+                    Location dropLoc = target.clone().add(rx, 4, rz);
+                    dropLoc.getWorld().spawnParticle(Particle.WATER_DROP, dropLoc, 0, 0, -1.0, 0, 0.2);
+                    Location floorLoc = target.clone().add(rx, 0.1, rz);
+                    floorLoc.getWorld().spawnParticle(Particle.SLIME, floorLoc, 1, 0.1, 0, 0.1, 0.01);
+                }
+                if (ticks % 10 == 0) {
+                    for (Entity ent : target.getWorld().getNearbyEntities(target, 4.0, 3.0, 4.0)) {
+                        if (ent instanceof LivingEntity && !ent.equals(p)) {
+                            LivingEntity le = (LivingEntity) ent;
+                            le.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 80, 1));
+                            le.damage(1.5, p);
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+        return true;
+    }
 }
 class AcidPuddle extends Ability {
-    public AcidPuddle(ItemEditFull pl) { super("acid_puddle", "Acid Puddle", "Continuous damage."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    private final ItemEditFull plugin;
+    public AcidPuddle(ItemEditFull pl) { super("acid_puddle", "Acid Puddle", "Continuous damage."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location target = p.getLocation();
+        p.getWorld().playSound(target, Sound.BLOCK_LAVA_AMBIENT, 1.0f, 0.6f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 100) {
+                    cancel();
+                    return;
+                }
+                target.getWorld().spawnParticle(Particle.SLIME, target, 5, 2.0, 0.1, 2.0, 0.01);
+                if (ticks % 10 == 0) {
+                    for (Entity ent : target.getWorld().getNearbyEntities(target, 2.5, 1.0, 2.5)) {
+                        if (ent instanceof LivingEntity && !ent.equals(p)) {
+                            LivingEntity le = (LivingEntity) ent;
+                            le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 2));
+                            le.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+                            le.damage(2.0, p);
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+        return true;
+    }
 }
 
 // Subclasses (61-90 Combat styles)

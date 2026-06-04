@@ -905,6 +905,22 @@ class DragonClawSlash extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) { return true; }
 }
 class AbyssalDrownStrike extends Ability {
-    public AbyssalDrownStrike(ItemEditFull pl) { super("abyssal_drown_strike", "Abyssal Drown", "Fatigues targets."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    private final ItemEditFull plugin;
+    public AbyssalDrownStrike(ItemEditFull pl) { super("abyssal_drown_strike", "Abyssal Drown", "Fatigues targets."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        p.getWorld().playSound(loc, Sound.ENTITY_PLAYER_SPLASH, 1.2f, 0.8f);
+        p.getWorld().spawnParticle(Particle.WATER_BUBBLE, loc, 50, 4.0, 1.5, 4.0, 0.1);
+        for (Entity ent : p.getWorld().getNearbyEntities(loc, 5.0, 2.5, 5.0)) {
+            if (ent instanceof LivingEntity && !ent.equals(p)) {
+                LivingEntity le = (LivingEntity) ent;
+                le.setRemainingAir(0);
+                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 120, 2));
+                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 120, 2));
+                le.damage(4.0, p);
+                NewExpansionAbilities.playSoundSafe(le.getLocation(), "ENTITY_GENERIC_DROWN", Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
+            }
+        }
+        return true;
+    }
 }
