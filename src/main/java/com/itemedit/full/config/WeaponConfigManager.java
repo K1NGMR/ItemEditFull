@@ -22,10 +22,18 @@ public class WeaponConfigManager {
         }
         file = new File(plugin.getDataFolder(), "weapon.yml");
         if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                plugin.getLogger().severe("Could not create weapon.yml!");
+            if (plugin.getResource("weapon.yml") != null) {
+                try {
+                    plugin.saveResource("weapon.yml", false);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Could not save weapon.yml from resources: " + e.getMessage());
+                }
+            } else {
+                try {
+                    file.createNewFile();
+                } catch (IOException e) {
+                    plugin.getLogger().severe("Could not create weapon.yml!");
+                }
             }
         }
         config = YamlConfiguration.loadConfiguration(file);

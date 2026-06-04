@@ -43,18 +43,39 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length == 0) {
+            ItemStack item = player.getInventory().getItemInMainHand();
+            if (item == null || item.getType().isAir()) {
+                player.sendMessage("§cYou must hold an item in your main hand.");
+                return true;
+            }
+            plugin.getGuiManager().openMainMenu(player);
+            return true;
+        }
+
+        String sub = args[0].toLowerCase();
+        if (sub.equals("reload")) {
+            if (!player.hasPermission("itemedit.admin")) {
+                player.sendMessage("§cYou do not have permission to reload the configuration.");
+                return true;
+            }
+            plugin.reloadConfig();
+            plugin.getWeaponConfigManager().reload();
+            player.sendMessage("§aItemEdit configuration and weapon.yml successfully reloaded!");
+            return true;
+        }
+
+        if (sub.equals("give")) {
+            handleGive(player, args);
+            return true;
+        }
+
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType().isAir()) {
             player.sendMessage("§cYou must hold an item in your main hand.");
             return true;
         }
 
-        if (args.length == 0) {
-            plugin.getGuiManager().openMainMenu(player);
-            return true;
-        }
-
-        String sub = args[0].toLowerCase();
         switch (sub) {
             case "rename":
                 handleRename(player, item, args);
@@ -86,15 +107,6 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             case "hidetooltips":
                 handleHideTooltips(player, item, args);
                 break;
-            case "reload":
-                if (!player.hasPermission("itemedit.admin")) {
-                    player.sendMessage("§cYou do not have permission to reload the configuration.");
-                    return true;
-                }
-                plugin.reloadConfig();
-                plugin.getWeaponConfigManager().reload();
-                player.sendMessage("§aItemEdit configuration and weapon.yml successfully reloaded!");
-                break;
             default:
                 sendHelp(player);
                 break;
@@ -118,6 +130,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         player.sendMessage("§e/ie ability <add/remove/clear/list> [ability] §7- Manages item abilities.");
         player.sendMessage("§e/ie custom <ability> <param> <value> §7- Overrides ability values.");
         player.sendMessage("§e/ie hidetooltips [true/false] §7- Hides or shows item tooltips.");
+        player.sendMessage("§e/ie give [player] <weapon_key> §7- Gives a weapon from weapon.yml.");
         player.sendMessage("§e/ie reload §7- Reloads config.yml and weapon.yml files.");
     }
 
@@ -627,7 +640,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return filter(Arrays.asList("rename", "lore", "enchant", "unbreakable", "flag", "attribute", "ability", "custom", "gui", "hidetooltips", "reload"), args[0]);
+            return filter(Arrays.asList("rename", "lore", "enchant", "unbreakable", "flag", "attribute", "ability", "custom", "gui", "hidetooltips", "give", "reload"), args[0]);
         }
 
         if (args.length == 2) {
@@ -647,6 +660,19 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                     return filter(Arrays.asList("add", "remove", "clear", "list"), args[1]);
                 case "custom":
                     return filter(plugin.getAbilityManager().getRegisteredAbilities().stream().map(Ability::getId).collect(Collectors.toList()), args[1]);
+                case "give":
+                    List<String> suggestions = new ArrayList<>();
+                    for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                        suggestions.add(p.getName());
+                    }
+                    org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                    if (weaponCfg.contains("weapons")) {
+                        org.bukkit.configuration.ConfigurationSection sec = weaponCfg.getConfigurationSection("weapons");
+                        if (sec != null) {
+                            suggestions.addAll(sec.getKeys(false));
+                        }
+                    }
+                    return filter(suggestions, args[1]);
             }
         }
 
@@ -666,7 +692,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                                 }
                                 return a.name();
                             })
-                            .collect(Collectors.toList());
+                             .collect(Collectors.toList());
                     return filter(names, args[2]);
                 }
             } else if (sub.equalsIgnoreCase("ability")) {
@@ -675,6 +701,16 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 }
             } else if (sub.equalsIgnoreCase("custom")) {
                 return filter(Arrays.asList("cooldown", "damage", "radius", "duration", "fire_ticks", "health_heal", "hunger_heal"), args[2]);
+            } else if (sub.equalsIgnoreCase("give")) {
+                List<String> suggestions = new ArrayList<>();
+                org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+                if (weaponCfg.contains("weapons")) {
+                    org.bukkit.configuration.ConfigurationSection sec = weaponCfg.getConfigurationSection("weapons");
+                    if (sec != null) {
+                        suggestions.addAll(sec.getKeys(false));
+                    }
+                }
+                return filter(suggestions, args[2]);
             }
         }
 
@@ -684,5 +720,74 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
     private List<String> filter(List<String> list, String prefix) {
         String lower = prefix.toLowerCase();
         return list.stream().filter(s -> s.toLowerCase().startsWith(lower)).collect(Collectors.toList());
+    }
+
+    private void handleGive(Player sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /ie give [player] <weapon_key>");
+            return;
+        }
+
+        Player target = sender;
+        String weaponKey;
+
+        if (args.length >= 3) {
+            target = org.bukkit.Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage("§cPlayer not found: " + args[1]);
+                return;
+            }
+            weaponKey = args[2].toLowerCase();
+        } else {
+            weaponKey = args[1].toLowerCase();
+        }
+
+        org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+        String path = "weapons." + weaponKey;
+        if (!weaponCfg.contains(path)) {
+            sender.sendMessage("§cWeapon '" + weaponKey + "' not found in weapon.yml.");
+            return;
+        }
+
+        String matStr = weaponCfg.getString(path + ".material", "BLAZE_ROD");
+        org.bukkit.Material material = org.bukkit.Material.BLAZE_ROD;
+        try {
+            material = org.bukkit.Material.valueOf(matStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cWarning: Invalid material '" + matStr + "' in config. Using BLAZE_ROD.");
+        }
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            sender.sendMessage("§cError: Could not generate item metadata.");
+            return;
+        }
+
+        if (weaponCfg.contains(path + ".display-name")) {
+            String dn = weaponCfg.getString(path + ".display-name");
+            meta.displayName(parseText(dn));
+        }
+
+        if (weaponCfg.contains(path + ".lore")) {
+            List<String> rawLore = weaponCfg.getStringList(path + ".lore");
+            List<Component> parsedLore = rawLore.stream().map(this::parseText).collect(Collectors.toList());
+            meta.lore(parsedLore);
+        }
+
+        NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+        meta.getPersistentDataContainer().set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
+        item.setItemMeta(meta);
+
+        List<String> abilities = weaponCfg.getStringList(path + ".abilities");
+        if (abilities != null && !abilities.isEmpty()) {
+            plugin.getAbilityManager().setItemAbilities(item, abilities);
+        }
+
+        target.getInventory().addItem(item);
+        sender.sendMessage("§aSuccessfully gave " + target.getName() + " the weapon: " + weaponKey);
+        if (!target.equals(sender)) {
+            target.sendMessage("§aYou have been given a custom weapon: " + weaponKey);
+        }
     }
 }
