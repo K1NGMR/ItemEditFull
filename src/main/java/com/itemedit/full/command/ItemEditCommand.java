@@ -106,7 +106,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         player.sendMessage("§e/ie unbreakable <true/false> §7- Sets unbreakable state.");
         player.sendMessage("§e/ie flag <add/remove/clear> <flag> §7- Manages item flags.");
         player.sendMessage("§e/ie attribute <add/remove/clear> <attr> [val] §7- Manages attributes.");
-        player.sendMessage("§e/ie ability <add/remove/list> [ability] §7- Manages item abilities.");
+        player.sendMessage("§e/ie ability <add/remove/clear/list> [ability] §7- Manages item abilities.");
         player.sendMessage("§e/ie custom <ability> <param> <value> §7- Overrides ability values.");
         player.sendMessage("§e/ie hidetooltips [true/false] §7- Hides or shows item tooltips.");
     }
@@ -457,7 +457,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
     private void handleAbility(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie ability <add/remove/list> [ability]");
+            player.sendMessage("§cUsage: /ie ability <add/remove/clear/list> [ability]");
             return;
         }
 
@@ -467,6 +467,14 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             for (Ability ability : plugin.getAbilityManager().getRegisteredAbilities()) {
                 player.sendMessage("§e- " + ability.getId() + " §7(" + ability.getName() + "): " + ability.getDescription());
             }
+            return;
+        }
+
+        if (operation.equalsIgnoreCase("clear")) {
+            plugin.getAbilityManager().setItemAbilities(item, new ArrayList<>());
+            player.getInventory().setItemInMainHand(item);
+            player.updateInventory();
+            player.sendMessage("§aCleared all abilities from your item.");
             return;
         }
 
