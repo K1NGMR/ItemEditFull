@@ -21,6 +21,16 @@ import java.util.*;
 public class NewExpansionAbilities implements Listener {
     private static ItemEditFull pluginInstance;
     private static final Map<UUID, Long> piglinRageActive = new HashMap<>();
+    private static final Map<UUID, Long> activeBreezeDeflects = new HashMap<>();
+    private static final List<Location> magmaTrailLocations = new ArrayList<>();
+
+    public static void playSoundSafe(Location loc, String soundName, Sound fallbackSound, float volume, float pitch) {
+        try {
+            loc.getWorld().playSound(loc, Sound.valueOf(soundName), volume, pitch);
+        } catch (Exception e) {
+            loc.getWorld().playSound(loc, fallbackSound, volume, pitch);
+        }
+    }
 
     public static void register(ItemEditFull plugin) {
         pluginInstance = plugin;
@@ -171,6 +181,45 @@ public class NewExpansionAbilities implements Listener {
         plugin.getAbilityManager().registerAbility(new AbyssalDrownStrike(plugin));
 
         plugin.getServer().getPluginManager().registerEvents(new NewExpansionAbilities(), plugin);
+
+        // Magma Trail Damage Loop
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                synchronized (magmaTrailLocations) {
+                    Iterator<Location> it = magmaTrailLocations.iterator();
+                    while (it.hasNext()) {
+                        Location loc = it.next();
+                        loc.getWorld().spawnParticle(Particle.FLAME, loc, 3, 0.2, 0.1, 0.2, 0.02);
+                        for (Entity ent : loc.getWorld().getNearbyEntities(loc, 1.2, 1.2, 1.2)) {
+                            if (ent instanceof LivingEntity) {
+                                LivingEntity le = (LivingEntity) ent;
+                                le.setFireTicks(40);
+                                le.damage(1.5);
+                            }
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 10L, 10L);
+    }
+
+    public static void addMagmaTrailLocation(Location loc) {
+        synchronized (magmaTrailLocations) {
+            magmaTrailLocations.add(loc);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    synchronized (magmaTrailLocations) {
+                        magmaTrailLocations.remove(loc);
+                    }
+                }
+            }.runTaskLater(pluginInstance, 100L); // 5 seconds duration
+        }
+    }
+
+    public static void addBreezeDeflect(UUID uuid) {
+        activeBreezeDeflects.put(uuid, System.currentTimeMillis() + 10000L); // 10s
     }
 
     @EventHandler
@@ -188,6 +237,18 @@ public class NewExpansionAbilities implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player p = (Player) event.getEntity();
+            Long expire = activeBreezeDeflects.get(p.getUniqueId());
+            if (expire != null && System.currentTimeMillis() < expire) {
+                if (event.getDamager() instanceof Projectile) {
+                    event.setCancelled(true);
+                    p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 15, 0.4, 0.4, 0.4, 0.1);
+                    playSoundSafe(p.getLocation(), "ENTITY_WIND_CHARGE_THROW", Sound.ENTITY_FIREWORK_ROCKET_SHOOT, 0.8f, 1.4f);
+                }
+            }
+        }
+
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player p = (Player) event.getDamager();
             LivingEntity t = (LivingEntity) event.getEntity();
@@ -196,10 +257,12 @@ public class NewExpansionAbilities implements Listener {
             
             if (abs.contains("magma_fist")) {
                 t.setFireTicks(100);
-                t.damage(2.0);
+                t.damage(3.0);
+                t.getWorld().spawnParticle(Particle.FLAME, t.getLocation(), 8, 0.3, 0.3, 0.3, 0.05);
             }
             if (abs.contains("husk_hunger_strike")) {
                 t.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, 120, 2));
+                t.getWorld().playSound(t.getLocation(), Sound.ENTITY_HUSK_AMBIENT, 0.8f, 0.9f);
             }
             if (abs.contains("piglin_rage")) {
                 double mult = 1.0 + (1.0 - (p.getHealth() / p.getMaxHealth()));
@@ -208,6 +271,7 @@ public class NewExpansionAbilities implements Listener {
             if (abs.contains("vampiric_edge")) {
                 double heal = Math.min(2.0, event.getFinalDamage() * 0.15);
                 p.setHealth(Math.min(p.getMaxHealth(), p.getHealth() + heal));
+                p.getWorld().spawnParticle(Particle.HEART, p.getLocation().add(0, 1.5, 0), 3, 0.2, 0.2, 0.2, 0.01);
             }
         }
     }
@@ -223,20 +287,50 @@ class MagmaJump extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) { p.setVelocity(new Vector(0, 1.2, 0)); p.getWorld().spawnParticle(Particle.FLAME, p.getLocation(), 20, 0.5, 0.5, 0.5, 0.1); return true; }
 }
 class MagmaTrail extends Ability {
-    public MagmaTrail(ItemEditFull pl) { super("magma_trail", "Magma Trail", "Leaves a blazing path."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    private final ItemEditFull plugin;
+    public MagmaTrail(ItemEditFull pl) { super("magma_trail", "Magma Trail", "Leaves a blazing path."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (!p.isOnline() || ticks++ > 10) { cancel(); return; }
+                NewExpansionAbilities.addMagmaTrailLocation(p.getLocation().add(0, 0.1, 0));
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
+        return true;
+    }
 }
 class MagmaFist extends Ability {
     public MagmaFist(ItemEditFull pl) { super("magma_fist", "Magma Fist", "Strike with fiery impact."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) { p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BLAZE_AMBIENT, 0.8f, 1.1f); return true; }
 }
 class BlazeSpeed extends Ability {
     public BlazeSpeed(ItemEditFull pl) { super("blaze_speed", "Blaze Speed", "High velocity flame dash."); }
     @Override public boolean trigger(Player p, ItemStack i) { p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1)); p.getWorld().spawnParticle(Particle.FLAME, p.getLocation(), 15, 0.2, 0.2, 0.2, 0.1); return true; }
 }
 class BlazeAura extends Ability {
-    public BlazeAura(ItemEditFull pl) { super("blaze_aura", "Blaze Aura", "Burns nearby targets."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    private final ItemEditFull plugin;
+    public BlazeAura(ItemEditFull pl) { super("blaze_aura", "Blaze Aura", "Burns nearby targets."); this.plugin = pl; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (!p.isOnline() || ticks++ > 5) { cancel(); return; }
+                Location loc = p.getLocation();
+                loc.getWorld().spawnParticle(Particle.FLAME, loc, 15, 4.0, 0.5, 4.0, 0.05);
+                for (Entity ent : loc.getWorld().getNearbyEntities(loc, 4.0, 2.0, 4.0)) {
+                    if (ent instanceof LivingEntity && !ent.equals(p)) {
+                        LivingEntity le = (LivingEntity) ent;
+                        le.setFireTicks(80);
+                        le.damage(2.0, p);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+        return true;
+    }
 }
 class BlazeFlight extends Ability {
     public BlazeFlight(ItemEditFull pl) { super("blaze_flight", "Blaze Flight", "Propels player upwards."); }
@@ -371,11 +465,39 @@ class FishWaterBreathing extends Ability {
 }
 class OceanTempest extends Ability {
     public OceanTempest(ItemEditFull pl) { super("ocean_tempest", "Water Tempest", "Launches entities."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        p.getWorld().playSound(loc, Sound.BLOCK_WATER_AMBIENT, 1.2f, 0.8f);
+        p.getWorld().spawnParticle(Particle.WATER_SPLASH, loc, 50, 3.0, 1.0, 3.0, 0.1);
+        for (Entity ent : p.getWorld().getNearbyEntities(loc, 4.0, 3.0, 4.0)) {
+            if (ent instanceof LivingEntity && !ent.equals(p)) {
+                LivingEntity le = (LivingEntity) ent;
+                le.setVelocity(new Vector(0, 0.8, 0));
+                le.damage(4.0, p);
+            }
+        }
+        return true;
+    }
 }
 class OceanTsunami extends Ability {
     public OceanTsunami(ItemEditFull pl) { super("ocean_tsunami", "Tsunami Wave", "Wave push."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        Vector dir = loc.getDirection().setY(0).normalize();
+        p.getWorld().playSound(loc, Sound.ITEM_BUCKET_EMPTY, 1.5f, 0.7f);
+        for (int k = 1; k <= 6; k++) {
+            Location step = loc.clone().add(dir.clone().multiply(k));
+            p.getWorld().spawnParticle(Particle.WATER_SPLASH, step, 10, 0.5, 0.5, 0.5, 0.05);
+            for (Entity ent : step.getWorld().getNearbyEntities(step, 1.5, 1.5, 1.5)) {
+                if (ent instanceof LivingEntity && !ent.equals(p)) {
+                    LivingEntity le = (LivingEntity) ent;
+                    le.setVelocity(dir.clone().multiply(1.4).setY(0.25));
+                    le.damage(3.5, p);
+                }
+            }
+        }
+        return true;
+    }
 }
 
 // Subclasses (41-60 Sky)
@@ -401,7 +523,11 @@ class BreezeWindCharge extends Ability {
 }
 class BreezeDeflect extends Ability {
     public BreezeDeflect(ItemEditFull pl) { super("breeze_deflect", "Wind Shield", "Arrows bounce."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        NewExpansionAbilities.addBreezeDeflect(p.getUniqueId());
+        NewExpansionAbilities.playSoundSafe(p.getLocation(), "ENTITY_WIND_CHARGE_WIND_BURST", Sound.ENTITY_FIREWORK_ROCKET_SHOOT, 1.2f, 1.2f);
+        return true;
+    }
 }
 class BreezeLeap extends Ability {
     public BreezeLeap(ItemEditFull pl) { super("breeze_leap", "Breeze Leap", "Vault high."); }
@@ -409,7 +535,20 @@ class BreezeLeap extends Ability {
 }
 class BreezeGust extends Ability {
     public BreezeGust(ItemEditFull pl) { super("breeze_gust", "Gust Blast", "Wind push."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        NewExpansionAbilities.playSoundSafe(loc, "ENTITY_WIND_CHARGE_WIND_BURST", Sound.ENTITY_FIREWORK_ROCKET_SHOOT, 1.5f, 0.9f);
+        p.getWorld().spawnParticle(Particle.CLOUD, loc, 30, 3.0, 0.5, 3.0, 0.15);
+        for (Entity ent : p.getWorld().getNearbyEntities(loc, 4.0, 2.0, 4.0)) {
+            if (ent instanceof LivingEntity && !ent.equals(p)) {
+                LivingEntity le = (LivingEntity) ent;
+                Vector push = le.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.3);
+                le.setVelocity(push);
+                le.damage(2.0, p);
+            }
+        }
+        return true;
+    }
 }
 class BatSonar extends Ability {
     public BatSonar(ItemEditFull pl) { super("bat_sonar", "Bat Sonar", "Highlights targets."); }
@@ -467,7 +606,17 @@ class SculkShriekerSound extends Ability {
 }
 class SculkSensorPing extends Ability {
     public SculkSensorPing(ItemEditFull pl) { super("sculk_sensor_ping", "Sensor Ping", "Detects motion."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        NewExpansionAbilities.playSoundSafe(loc, "BLOCK_SCULK_SENSOR_CLICK", Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
+        p.getWorld().spawnParticle(Particle.SPELL_INSTANT, loc, 25, 10.0, 1.0, 10.0, 0.05);
+        for (Entity ent : p.getWorld().getNearbyEntities(loc, 10.0, 3.0, 10.0)) {
+            if (ent instanceof LivingEntity && !ent.equals(p)) {
+                ((LivingEntity) ent).addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 100, 0));
+            }
+        }
+        return true;
+    }
 }
 class SculkBlindnessAura extends Ability {
     public SculkBlindnessAura(ItemEditFull pl) { super("sculk_blindness_aura", "Sculk Darkness", "Apply darkness."); }
@@ -555,7 +704,20 @@ class HuskSandStorm extends Ability {
 }
 class HuskDesertHeat extends Ability {
     public HuskDesertHeat(ItemEditFull pl) { super("husk_desert_heat", "Desert Heat", "Heat blast."); }
-    @Override public boolean trigger(Player p, ItemStack i) { return true; }
+    @Override public boolean trigger(Player p, ItemStack i) {
+        Location loc = p.getLocation();
+        p.getWorld().playSound(loc, Sound.ENTITY_HUSK_AMBIENT, 1.2f, 1.2f);
+        p.getWorld().spawnParticle(Particle.FLAME, loc, 40, 4.0, 1.0, 4.0, 0.05);
+        for (Entity ent : p.getWorld().getNearbyEntities(loc, 4.0, 2.0, 4.0)) {
+            if (ent instanceof LivingEntity && !ent.equals(p)) {
+                LivingEntity le = (LivingEntity) ent;
+                le.setFireTicks(60);
+                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 1));
+                le.damage(3.0, p);
+            }
+        }
+        return true;
+    }
 }
 class ShulkerLevitationBulletAbility extends Ability {
     private final ItemEditFull pl;

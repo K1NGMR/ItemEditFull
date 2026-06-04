@@ -652,3 +652,199 @@ abilities:
     cooldown: 15.0
   abyssal_drown_strike:
     cooldown: 15.0
+
+  # 100 More Expansion Abilities
+  wither_skull_bomb:
+    cooldown: 15.0
+  dragon_breath_ground:
+    cooldown: 15.0
+  creeper_detonation:
+    cooldown: 15.0
+  shulker_gravity_shift:
+    cooldown: 15.0
+  warden_sculk_infection:
+    cooldown: 15.0
+  evoker_fang_circle:
+    cooldown: 15.0
+  evoker_vex_swarm:
+    cooldown: 15.0
+  witch_elixir:
+    cooldown: 15.0
+  witch_poison_splash:
+    cooldown: 15.0
+  phantom_spectre:
+    cooldown: 15.0
+  stray_frost_hail:
+    cooldown: 15.0
+  husk_desiccation:
+    cooldown: 15.0
+  magma_cube_slam:
+    cooldown: 15.0
+  blaze_inferno:
+    cooldown: 15.0
+  piglin_golden_barrage:
+    cooldown: 15.0
+  drowned_whirlpool:
+    cooldown: 15.0
+  guardian_laser_burst:
+    cooldown: 15.0
+  elder_guardian_fatigue_blast:
+    cooldown: 15.0
+  ravager_charge:
+    cooldown: 15.0
+  ravager_roar:
+    cooldown: 15.0
+  illusioner_mirror:
+    cooldown: 15.0
+  illusioner_blind_volley:
+    cooldown: 15.0
+  pillager_raid_call:
+    cooldown: 15.0
+  slime_split:
+    cooldown: 15.0
+  iron_golem_toss:
+    cooldown: 15.0
+  iron_golem_shield:
+    cooldown: 15.0
+  spider_nest_trap:
+    cooldown: 15.0
+  fire_meteor:
+    cooldown: 15.0
+  fire_wall:
+    cooldown: 15.0
+  fire_nova:
+    cooldown: 15.0
+  ice_nova:
+    cooldown: 15.0
+  ice_prison:
+    cooldown: 15.0
+  ice_blizzard:
+    cooldown: 15.0
+  lightning_chain:
+    cooldown: 15.0
+  lightning_storm:
+    cooldown: 15.0
+  lightning_dash:
+    cooldown: 15.0
+  earth_wall:
+    cooldown: 15.0
+  earth_quake:
+    cooldown: 15.0
+  earth_tomb:
+    cooldown: 15.0
+  wind_push:
+    cooldown: 15.0
+  wind_pull:
+    cooldown: 15.0
+  wind_cyclone:
+    cooldown: 15.0
+  light_heal:
+    cooldown: 15.0
+  light_beam:
+    cooldown: 15.0
+  light_flash:
+    cooldown: 15.0
+  shadow_rift:
+    cooldown: 15.0
+  shadow_walk:
+    cooldown: 15.0
+  shadow_clone:
+    cooldown: 15.0
+  void_collapse:
+    cooldown: 15.0
+  void_grasp:
+    cooldown: 15.0
+  void_warp:
+    cooldown: 15.0
+  cosmic_shower:
+    cooldown: 15.0
+  cosmic_singularity:
+    cooldown: 15.0
+  cosmic_shield:
+    cooldown: 15.0
+  acid_spray:
+    cooldown: 15.0
+  acid_rain:
+    cooldown: 15.0
+  acid_puddle:
+    cooldown: 15.0
+  assassin_backstab:
+    cooldown: 15.0
+  assassin_smoke_bomb:
+    cooldown: 15.0
+  assassin_poison_dart:
+    cooldown: 15.0
+  tank_provoke:
+    cooldown: 15.0
+  tank_immovability:
+    cooldown: 15.0
+  tank_last_stand:
+    cooldown: 15.0
+  berserker_bloodlust:
+    cooldown: 15.0
+  berserker_charge:
+    cooldown: 15.0
+  berserker_rage:
+    cooldown: 15.0
+  healer_circle:
+    cooldown: 15.0
+  healer_purify:
+    cooldown: 15.0
+  healer_resurrection:
+    cooldown: 15.0
+  archer_volley:
+    cooldown: 15.0
+  archer_snipe:
+    cooldown: 15.0
+  archer_escape:
+    cooldown: 15.0
+  wizard_mana_shield:
+    cooldown: 15.0
+  wizard_teleport:
+    cooldown: 15.0
+  wizard_spell_steal:
+    cooldown: 15.0
+  paladin_smite:
+    cooldown: 15.0
+  paladin_shield:
+    cooldown: 15.0
+  paladin_aura:
+    cooldown: 15.0
+  summoner_skeleton:
+    cooldown: 15.0
+  summoner_golem:
+    cooldown: 15.0
+  summoner_wolfpack:
+    cooldown: 15.0
+  brawler_uppercut:
+    cooldown: 15.0
+  brawler_tackle:
+    cooldown: 15.0
+  brawler_shockwave:
+    cooldown: 15.0
+  ninja_teleport:
+    cooldown: 15.0
+  ninja_dodge:
+    cooldown: 15.0
+  ninja_star_volley:
+    cooldown: 15.0
+  grappling_hook:
+    cooldown: 15.0
+  magnet_chest:
+    cooldown: 15.0
+  harvest_bloom:
+    cooldown: 15.0
+  mineral_sense:
+    cooldown: 15.0
+  time_leap:
+    cooldown: 15.0
+  gravity_well_passive:
+    cooldown: 15.0
+  speed_run:
+    cooldown: 15.0
+  super_drill:
+    cooldown: 15.0
+  ender_swap_strike:
+    cooldown: 15.0
+  lunar_blessing:
+    cooldown: 15.0
