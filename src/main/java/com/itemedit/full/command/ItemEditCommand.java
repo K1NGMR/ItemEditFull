@@ -775,6 +775,10 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             meta.lore(parsedLore);
         }
 
+        if (weaponCfg.contains(path + ".custom-model-data")) {
+            meta.setCustomModelData(weaponCfg.getInt(path + ".custom-model-data"));
+        }
+
         NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
         meta.getPersistentDataContainer().set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
         item.setItemMeta(meta);

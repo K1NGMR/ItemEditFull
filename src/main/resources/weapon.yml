@@ -2,6 +2,7 @@ weapons:
   warden_wand:
     material: BLAZE_ROD
     display-name: "&b&lWarden Wand"
+    custom-model-data: 10001
     lore:
       - "&7A mystical wand forged from sculk blocks"
       - "&7and warden sensors."
