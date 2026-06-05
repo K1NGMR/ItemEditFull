@@ -14,7 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -335,13 +335,13 @@ class CreeperDetonation extends Ability {
     public CreeperDetonation(ItemEditFull pl) { super("creeper_detonation", "Creeper Detonation", "Initiate countdown explosion."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1.2f, 1f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override public void run() {
                 if (p.isOnline()) {
                     p.getWorld().createExplosion(p.getLocation(), 5f, false, false);
                 }
             }
-        }.runTaskLater(plugin, 40L);
+        }.runTaskLater(plugin, p, 40L);
         return true;
     }
 }
@@ -426,7 +426,7 @@ class PhantomSpectre extends Ability {
         stand.setSmall(true);
         stand.setCustomName("§7Phantom Spectre");
         stand.setCustomNameVisible(true);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -440,7 +440,7 @@ class PhantomSpectre extends Ability {
                 }
                 stand.getWorld().spawnParticle(Particle.PORTAL, stand.getLocation().add(0, 0.5, 0), 5, 0.2, 0.2, 0.2, 0.05);
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -450,7 +450,7 @@ class StrayFrostHail extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.BLOCK_SNOW_BREAK, 1.2f, 1.0f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -470,7 +470,7 @@ class StrayFrostHail extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -517,7 +517,7 @@ class PiglinGoldenBarrage extends Ability {
     public PiglinGoldenBarrage(ItemEditFull pl) { super("piglin_golden_barrage", "Gold Barrage", "Golden barrage."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.5f, 1.5f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int shots = 0;
             @Override
             public void run() {
@@ -529,7 +529,7 @@ class PiglinGoldenBarrage extends Ability {
                 Snowball nugget = p.launchProjectile(Snowball.class);
                 nugget.setMetadata("golden_barrage", new FixedMetadataValue(plugin, true));
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -539,7 +539,7 @@ class DrownedWhirlpool extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.ENTITY_PLAYER_SPLASH, 1.2f, 0.7f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -558,7 +558,7 @@ class DrownedWhirlpool extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -576,7 +576,7 @@ class GuardianLaserBurst extends Ability {
         if (target == null) return false;
         final LivingEntity finalTarget = target;
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GUARDIAN_ATTACK, 1.0f, 1.2f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -597,7 +597,7 @@ class GuardianLaserBurst extends Ability {
                     finalTarget.getWorld().playSound(finalTarget.getLocation(), Sound.ENTITY_GUARDIAN_HURT, 0.8f, 1.5f);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -643,7 +643,7 @@ class IllusionerMirror extends Ability {
             stand.getEquipment().setBoots(p.getEquipment().getBoots());
             stands.add(stand);
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -656,7 +656,7 @@ class IllusionerMirror extends Ability {
                     stand.getWorld().spawnParticle(Particle.SPELL_INSTANT, stand.getLocation().add(0, 1.0, 0), 2, 0.2, 0.5, 0.2, 0.01);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -675,7 +675,7 @@ class SlimeBounceAbility extends Ability {
         p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 160, 3));
         p.getWorld().playSound(p.getLocation(), Sound.BLOCK_SLIME_BLOCK_STEP, 1.2f, 1.0f);
         p.getWorld().spawnParticle(Particle.SLIME, p.getLocation(), 20, 0.5, 0.2, 0.5, 0.1);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -691,7 +691,7 @@ class SlimeBounceAbility extends Ability {
                     p.getWorld().spawnParticle(Particle.SLIME, p.getLocation(), 35, 1.0, 0.2, 1.0, 0.15);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -750,14 +750,14 @@ class SpiderNestTrap extends Ability {
         for (int k = 0; k < 2; k++) {
             p.getWorld().spawn(target.clone().add(0, 0.5, 0), CaveSpider.class);
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Block b : cobwebs) {
                     if (b.getType() == Material.COBWEB) b.setType(Material.AIR);
                 }
             }
-        }.runTaskLater(plugin, 100L);
+        }.runTaskLater(plugin, target, 100L);
         return true;
     }
 }
@@ -770,7 +770,7 @@ class FireMeteor extends Ability {
         Location target = p.getTargetBlock(null, 15).getLocation();
         Location sky = target.clone().add(0, 10, 0);
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GHAST_SHOOT, 1.2f, 1.0f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             Location current = sky.clone();
             Vector dir = target.toVector().subtract(sky.toVector()).normalize().multiply(0.5);
@@ -786,7 +786,7 @@ class FireMeteor extends Ability {
                 current.getWorld().spawnParticle(Particle.FLAME, current, 10, 0.2, 0.2, 0.2, 0.05);
                 current.getWorld().spawnParticle(Particle.SMOKE_NORMAL, current, 5, 0.1, 0.1, 0.1, 0.02);
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, target, 0L, 1L);
         return true;
     }
 }
@@ -820,7 +820,7 @@ class FireNova extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location base = p.getLocation().add(0, 0.5, 0);
         p.getWorld().playSound(base, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.2f, 0.8f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int step = 1;
             @Override
             public void run() {
@@ -846,7 +846,7 @@ class FireNova extends Ability {
                 }
                 step++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -856,7 +856,7 @@ class IceNovaAbility extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location base = p.getLocation().add(0, 0.5, 0);
         p.getWorld().playSound(base, Sound.BLOCK_GLASS_BREAK, 1.2f, 0.8f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int step = 1;
             @Override
             public void run() {
@@ -883,7 +883,7 @@ class IceNovaAbility extends Ability {
                 }
                 step++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -917,14 +917,14 @@ class IcePrison extends Ability {
             top.setType(Material.PACKED_ICE);
             iceBlocks.add(top);
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Block b : iceBlocks) {
                     if (b.getType() == Material.PACKED_ICE) b.setType(Material.AIR);
                 }
             }
-        }.runTaskLater(plugin, 80L);
+        }.runTaskLater(plugin, targetLoc, 80L);
         return true;
     }
 }
@@ -934,7 +934,7 @@ class IceBlizzard extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.BLOCK_SNOW_BREAK, 1.2f, 0.5f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -953,7 +953,7 @@ class IceBlizzard extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -987,7 +987,7 @@ class LightningStorm extends Ability {
     public LightningStorm(ItemEditFull pl) { super("lightning_storm", "Lightning Storm", "Call lightning area."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int strikes = 0;
             @Override
             public void run() {
@@ -1005,7 +1005,7 @@ class LightningStorm extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 6L);
+        }.runTaskTimer(plugin, target, 0L, 6L);
         return true;
     }
 }
@@ -1032,14 +1032,14 @@ class EarthWall extends Ability {
                 }
             }
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Block b : raisedBlocks) {
                     if (b.getType() == Material.DIRT) b.setType(Material.AIR);
                 }
             }
-        }.runTaskLater(plugin, 100L);
+        }.runTaskLater(plugin, loc, 100L);
         return true;
     }
 }
@@ -1085,14 +1085,14 @@ class EarthTomb extends Ability {
                 }
             }
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Block b : cage) {
                     if (b.getType() == Material.COBBLESTONE) b.setType(Material.AIR);
                 }
             }
-        }.runTaskLater(plugin, 80L);
+        }.runTaskLater(plugin, tLoc, 80L);
         return true;
     }
 }
@@ -1137,7 +1137,7 @@ class WindCyclone extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.ENTITY_PHANTOM_FLAP, 1.2f, 0.8f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1153,7 +1153,7 @@ class WindCyclone extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1223,7 +1223,7 @@ class ShadowClone extends Ability {
         stand.getEquipment().setBoots(new ItemStack(Material.LEATHER_BOOTS));
         stand.setCustomName("§8Shadow Clone");
         stand.setCustomNameVisible(true);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1235,7 +1235,7 @@ class ShadowClone extends Ability {
                 }
                 stand.getWorld().spawnParticle(Particle.PORTAL, stand.getLocation().add(0, 1.0, 0), 4, 0.2, 0.4, 0.2, 0.05);
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -1245,7 +1245,7 @@ class VoidCollapse extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.6f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1263,7 +1263,7 @@ class VoidCollapse extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1281,7 +1281,7 @@ class VoidGrasp extends Ability {
         if (target == null) return false;
         final LivingEntity finalTarget = target;
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.8f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1295,7 +1295,7 @@ class VoidGrasp extends Ability {
                     finalTarget.damage(2.0, p);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, p, 0L, 2L);
         return true;
     }
 }
@@ -1309,7 +1309,7 @@ class CosmicShower extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.BLOCK_AMETHYST_CLUSTER_STEP, 1.2f, 1.5f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1331,7 +1331,7 @@ class CosmicShower extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1341,7 +1341,7 @@ class CosmicSingularity extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.BLOCK_PORTAL_TRAVEL, 1.0f, 1.5f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1364,7 +1364,7 @@ class CosmicSingularity extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1379,7 +1379,7 @@ class AcidSpray extends Ability {
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_LLAMA_SPIT, 1.0f, 0.8f);
         Snowball b = p.launchProjectile(Snowball.class);
         b.setMetadata("acid_spray", new FixedMetadataValue(plugin, true));
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 if (b.isDead() || !b.isValid()) {
@@ -1388,7 +1388,7 @@ class AcidSpray extends Ability {
                 }
                 b.getWorld().spawnParticle(Particle.SLIME, b.getLocation(), 3, 0.1, 0.1, 0.1, 0.01);
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, b, 0L, 1L);
         return true;
     }
 }
@@ -1398,7 +1398,7 @@ class AcidRain extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getTargetBlock(null, 15).getLocation();
         p.getWorld().playSound(target, Sound.WEATHER_RAIN, 1.0f, 0.7f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1424,7 +1424,7 @@ class AcidRain extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1434,7 +1434,7 @@ class AcidPuddle extends Ability {
     @Override public boolean trigger(Player p, ItemStack i) {
         Location target = p.getLocation();
         p.getWorld().playSound(target, Sound.BLOCK_LAVA_AMBIENT, 1.0f, 0.6f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -1454,7 +1454,7 @@ class AcidPuddle extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, target, 0L, 2L);
         return true;
     }
 }
@@ -1840,7 +1840,7 @@ class TimeLeap extends Ability {
     public TimeLeap(ItemEditFull pl) {
         super("time_leap", "Time Leap", "Time warp back.");
         this.plugin = pl;
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Player online : Bukkit.getOnlinePlayers()) {
@@ -2179,14 +2179,14 @@ class SummonFriendAbility extends Ability {
                         }
                     }
                 }
-                new BukkitRunnable() {
+                new CompatRunnable() {
                     @Override public void run() {
                         if (friend.isValid()) {
                             friend.getWorld().spawnParticle(Particle.CLOUD, friend.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
                             friend.remove();
                         }
                     }
-                }.runTaskLater(plugin, lifetimeSeconds * 20L);
+                }.runTaskLater(plugin, friend, lifetimeSeconds * 20L);
             }
         }
         return true;
@@ -2216,7 +2216,7 @@ class AoeAttackAbility extends Ability {
         int totalTicks = indicatorSeconds * 20;
         int intervalTicks = (int) (damageIntervalSeconds * 20);
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int t = 0;
             @Override public void run() {
                 if (!p.isOnline() || t >= totalTicks) {
@@ -2243,7 +2243,7 @@ class AoeAttackAbility extends Ability {
                 }
                 t++;
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, p, 0L, 1L);
         return true;
     }
 }
@@ -2306,7 +2306,7 @@ class GiantSwordAbility extends Ability {
         final Sound finalSound = sound;
         final double radiusSq = radius * radius;
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int t = 0;
             @Override public void run() {
                 if (!display.isValid()) {
@@ -2333,15 +2333,15 @@ class GiantSwordAbility extends Ability {
                             }
                         }
                     }
-                    new BukkitRunnable() {
+                    new CompatRunnable() {
                         @Override public void run() {
                             if (display.isValid()) display.remove();
                         }
-                    }.runTaskLater(plugin, staySeconds * 20L);
+                    }.runTaskLater(plugin, display, staySeconds * 20L);
                     cancel();
                 }
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, display, 0L, 1L);
 
         return true;
     }
@@ -2447,7 +2447,7 @@ class GroundPoundAbility extends Ability {
             fallingBlocks.add(fb);
         }
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override public void run() {
                 Location firstLoc = null;
                 for (FallingBlock fb : fallingBlocks) {
@@ -2464,7 +2464,7 @@ class GroundPoundAbility extends Ability {
                     impactDelay = Math.max(1, (long) (dist / 2.5));
                 }
 
-                new BukkitRunnable() {
+                new CompatRunnable() {
                     @Override public void run() {
                         world.spawnParticle(Particle.EXPLOSION_NORMAL, targetLoc, 20, 1.0, 1.0, 1.0, 0.1);
                         world.playSound(targetLoc, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.8f);
@@ -2477,9 +2477,9 @@ class GroundPoundAbility extends Ability {
                             if (fb.isValid()) fb.remove();
                         }
                     }
-                }.runTaskLater(plugin, impactDelay);
+                }.runTaskLater(plugin, targetLoc, impactDelay);
             }
-        }.runTaskLater(plugin, 15L);
+        }.runTaskLater(plugin, p, 15L);
 
         return true;
     }
@@ -2497,15 +2497,15 @@ class PainAbility extends Ability {
 
         Bukkit.broadcastMessage("§4§l[" + p.getName() + "] THIS WORLD SHALL KNOW PAIN, FEEL PAIN, KNOW PAIN...");
         
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override public void run() {
                 if (p.isOnline()) {
                     Bukkit.broadcastMessage("§4§l[" + p.getName() + "] THOSE WHO DO NOT KNOW PAIN WILL NEVER UNDERSTAND TRUE PEACE.");
                 }
             }
-        }.runTaskLater(plugin, 25L);
+        }.runTaskLater(plugin, p, 25L);
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override public void run() {
                 if (!p.isOnline()) return;
                 Bukkit.broadcastMessage("§c§l[" + p.getName() + "] ALMIGHTY PUSH!!!");
@@ -2519,7 +2519,7 @@ class PainAbility extends Ability {
                 final double distance = orbLoc.distance(impact);
                 final int steps = (int) Math.max(1, Math.ceil(distance / 2.0));
 
-                new BukkitRunnable() {
+                new CompatRunnable() {
                     int step = 0;
                     @Override public void run() {
                         if (step >= steps || !orbLoc.getWorld().equals(impact.getWorld())) {
@@ -2581,15 +2581,15 @@ class PainAbility extends Ability {
                         world.playSound(orbLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.5f);
                         step++;
                     }
-                  }.runTaskTimer(plugin, 0L, 1L);
-              }
-          }.runTaskLater(plugin, 50L);
+                }.runTaskTimer(plugin, impact, 0L, 1L);
+            }
+        }.runTaskLater(plugin, p, 50L);
 
-          return true;
-      }
-  }
+        return true;
+    }
+}
 
-  class VenomSpitAbility extends Ability {
+class VenomSpitAbility extends Ability {
       private final ItemEditFull plugin;
       public VenomSpitAbility(ItemEditFull pl) { super("venom_spit", "Venom Spit", "Spits toxic venom."); this.plugin = pl; }
       @Override public boolean trigger(Player p, ItemStack item) {
@@ -2620,11 +2620,11 @@ class PainAbility extends Ability {
           p.getWorld().spawnParticle(Particle.CLOUD, p.getEyeLocation(), 10, 0.2, 0.2, 0.2, 0.1);
           if (loc.getBlock().getType() == Material.AIR) {
               loc.getBlock().setType(Material.COBWEB);
-              new BukkitRunnable() {
+              new CompatRunnable() {
                   @Override public void run() {
                       if (loc.getBlock().getType() == Material.COBWEB) loc.getBlock().setType(Material.AIR);
                   }
-              }.runTaskLater(plugin, 100L);
+              }.runTaskLater(plugin, loc, 100L);
           }
           for (Entity e : loc.getWorld().getNearbyEntities(loc, 2, 2, 2)) {
               if (e instanceof LivingEntity && !e.equals(p)) {
@@ -2646,14 +2646,14 @@ class PainAbility extends Ability {
               CaveSpider spider = p.getWorld().spawn(loc, CaveSpider.class);
               spider.setCustomName("§cSwarm Spider");
               spider.setCustomNameVisible(true);
-              new BukkitRunnable() {
+              new CompatRunnable() {
                   @Override public void run() {
                       if (spider.isValid()) {
                           spider.getWorld().spawnParticle(Particle.CLOUD, spider.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
                           spider.remove();
                       }
                   }
-              }.runTaskLater(plugin, 200L);
+              }.runTaskLater(plugin, spider, 200L);
           }
           return true;
       }
@@ -2756,7 +2756,7 @@ class PainAbility extends Ability {
           Location startLoc = impactLoc.clone().add(offsetX, 40, offsetZ);
           p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2f, 0.5f);
 
-          new BukkitRunnable() {
+          new CompatRunnable() {
               int ticks = 0;
               final Location current = startLoc.clone();
               final Vector dir = impactLoc.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(1.5);
@@ -2782,7 +2782,7 @@ class PainAbility extends Ability {
                       this.cancel();
                   }
               }
-          }.runTaskTimer(plugin, 0L, 1L);
+          }.runTaskTimer(plugin, impactLoc, 0L, 1L);
           return true;
       }
   }
@@ -2799,7 +2799,7 @@ class PainAbility extends Ability {
           Location startLoc = impactLoc.clone().add(offsetX, 100, offsetZ);
           p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 5f, 0.2f);
 
-          new BukkitRunnable() {
+          new CompatRunnable() {
               int ticks = 0;
               final Location current = startLoc.clone();
               final Vector dir = impactLoc.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(2.0);
@@ -2826,7 +2826,7 @@ class PainAbility extends Ability {
                       this.cancel();
                   }
               }
-          }.runTaskTimer(plugin, 0L, 1L);
+          }.runTaskTimer(plugin, impactLoc, 0L, 1L);
           return true;
       }
   }
@@ -2843,7 +2843,7 @@ class PainAbility extends Ability {
 
           for (int m = 0; m < 5; m++) {
               final int index = m;
-              new BukkitRunnable() {
+              new CompatRunnable() {
                   @Override public void run() {
                       if (!p.isOnline()) return;
                       Location individualImpact = impactLoc.clone().add((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20);
@@ -2851,7 +2851,7 @@ class PainAbility extends Ability {
                       double offsetZ = (Math.random() - 0.5) * 150;
                       Location startLoc = individualImpact.clone().add(offsetX, 120, offsetZ);
 
-                      new BukkitRunnable() {
+                      new CompatRunnable() {
                           int ticks = 0;
                           final Location current = startLoc.clone();
                           final Vector dir = individualImpact.clone().toVector().subtract(startLoc.toVector()).normalize().multiply(index == 0 ? 2.5 : 2.0);
@@ -2882,9 +2882,9 @@ class PainAbility extends Ability {
                                   this.cancel();
                               }
                           }
-                      }.runTaskTimer(plugin, 0L, 1L);
+                      }.runTaskTimer(plugin, individualImpact, 0L, 1L);
                   }
-              }.runTaskLater(plugin, m * 15L);
+              }.runTaskLater(plugin, p, m * 15L);
           }
           return true;
       }

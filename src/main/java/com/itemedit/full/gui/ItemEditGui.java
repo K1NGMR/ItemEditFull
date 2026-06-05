@@ -22,6 +22,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import com.itemedit.full.utils.SchedulerUtils;
+
 import java.util.*;
 
 public class ItemEditGui implements Listener {
@@ -387,11 +389,11 @@ public class ItemEditGui implements Listener {
         String message = event.getMessage().trim();
         if (message.equalsIgnoreCase("cancel")) {
             player.sendMessage("§cCancelled.");
-            Bukkit.getScheduler().runTask(plugin, () -> openMainMenu(player));
+            SchedulerUtils.runTask(plugin, player, () -> openMainMenu(player));
             return;
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerUtils.runTask(plugin, player, () -> {
             ItemStack held = player.getInventory().getItemInMainHand();
             if (held == null || held.getType().isAir()) {
                 player.sendMessage("§cYou must hold the item to edit it.");

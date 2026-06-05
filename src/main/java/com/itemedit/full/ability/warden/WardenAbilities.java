@@ -12,7 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 
 public class WardenAbilities {
     public static void register(ItemEditFull plugin) {
@@ -143,7 +143,7 @@ class SculkSensorTrap extends Ability {
         trapLoc.getWorld().playSound(trapLoc, Sound.BLOCK_SCULK_SENSOR_PLACE, 1.0f, 1.0f);
         trapLoc.getWorld().spawnParticle(Particle.SCULK_CHARGE, trapLoc, 10, 0.2, 0.2, 0.2, 0.05);
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
 
             @Override
@@ -172,7 +172,7 @@ class SculkSensorTrap extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 5L);
+        }.runTaskTimer(plugin, trapLoc, 0L, 5L);
 
         return true;
     }
@@ -195,7 +195,7 @@ class WardenRage extends Ability {
         player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, (int) (duration * 20), 1));
         player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -206,7 +206,7 @@ class WardenRage extends Ability {
                 player.getWorld().spawnParticle(Particle.SCULK_SOUL, player.getLocation().add(0, 1, 0), 5, 0.3, 0.5, 0.3, 0.02);
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, player, 0L, 20L);
 
         return true;
     }

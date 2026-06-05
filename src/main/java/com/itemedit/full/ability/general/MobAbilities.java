@@ -16,7 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -106,9 +106,9 @@ public class MobAbilities implements Listener {
             Block block = loc.getBlock();
             if (block.getType() == Material.AIR) {
                 block.setType(Material.COBWEB);
-                new BukkitRunnable() {
+                new CompatRunnable() {
                     @Override public void run() { if (block.getType() == Material.COBWEB) block.setType(Material.AIR); }
-                }.runTaskLater(pluginInstance, 60L); // 3 seconds
+                }.runTaskLater(pluginInstance, block.getLocation(), 60L); // 3 seconds
             }
         } else if (entity.hasMetadata("venom_spit")) {
             Location loc = event.getHitBlock() != null ? event.getHitBlock().getLocation() : event.getEntity().getLocation();
@@ -156,7 +156,7 @@ class ArachnidJump extends Ability {
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1.0f, 1.2f);
         Vector dir = player.getLocation().getDirection().setY(0.35).normalize().multiply(1.4);
         player.setVelocity(dir);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 if (player.isOnline()) {
@@ -169,7 +169,7 @@ class ArachnidJump extends Ability {
                     }
                 }
             }
-        }.runTaskLater(plugin, 10L);
+        }.runTaskLater(plugin, player, 10L);
         return true;
     }
 }
@@ -205,9 +205,9 @@ class SpiderNest extends Ability {
         for (int i = 0; i < 2; i++) {
             Spider s = (Spider) player.getWorld().spawnEntity(player.getLocation().add((Math.random()-0.5)*2, 0, (Math.random()-0.5)*2), EntityType.SPIDER);
             s.setMetadata("helper", new FixedMetadataValue(plugin, "true"));
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override public void run() { if (s.isValid()) s.remove(); }
-            }.runTaskLater(plugin, 300L);
+            }.runTaskLater(plugin, s, 300L);
         }
         return true;
     }
@@ -239,7 +239,7 @@ class CaveSpiderLeap extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1.0f, 1.2f);
         player.setVelocity(player.getLocation().getDirection().setY(0.3).normalize().multiply(1.3));
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 if (player.isOnline()) {
@@ -250,7 +250,7 @@ class CaveSpiderLeap extends Ability {
                     }
                 }
             }
-        }.runTaskLater(plugin, 8L);
+        }.runTaskLater(plugin, player, 8L);
         return true;
     }
 }
@@ -288,9 +288,9 @@ class CaveSpiderNest extends Ability {
         for (int i = 0; i < 2; i++) {
             CaveSpider s = (CaveSpider) player.getWorld().spawnEntity(player.getLocation().add((Math.random()-0.5)*2, 0, (Math.random()-0.5)*2), EntityType.CAVE_SPIDER);
             s.setMetadata("helper", new FixedMetadataValue(plugin, "true"));
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override public void run() { if (s.isValid()) s.remove(); }
-            }.runTaskLater(plugin, 300L);
+            }.runTaskLater(plugin, s, 300L);
         }
         return true;
     }
@@ -368,7 +368,7 @@ class DragonDash extends Ability {
         Vector dir = loc.getDirection().setY(0.1).normalize().multiply(2.0);
         player.setVelocity(dir);
         player.getWorld().playSound(loc, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.5f, 1.2f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int step = 0;
             @Override
             public void run() {
@@ -382,7 +382,7 @@ class DragonDash extends Ability {
                 }
                 step++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, player, 0L, 2L);
         return true;
     }
 }
@@ -450,7 +450,7 @@ class WitherShield extends Ability {
         double duration = getDoubleParam(plugin, item, "duration", 8.0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 1.2f, 1.0f);
         MobAbilities.registerWitherShield(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000));
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -458,7 +458,7 @@ class WitherShield extends Ability {
                 player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1, 0), 4, 0.4, 0.5, 0.4, 0.01);
                 ticks += 5;
             }
-        }.runTaskTimer(plugin, 0L, 5L);
+        }.runTaskTimer(plugin, player, 0L, 5L);
         return true;
     }
 }
@@ -471,7 +471,7 @@ class DecayingPresence extends Ability {
         double radius = getDoubleParam(plugin, item, "radius", 5.0);
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_HURT, 1.0f, 0.5f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -485,7 +485,7 @@ class DecayingPresence extends Ability {
                 }
                 ticks += 20;
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, player, 0L, 20L);
         return true;
     }
 }

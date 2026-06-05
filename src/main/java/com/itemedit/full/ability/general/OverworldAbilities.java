@@ -17,7 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -80,14 +80,14 @@ public class OverworldAbilities implements Listener {
                 activeCreeperCharges.remove(player.getUniqueId());
                 Location loc = event.getEntity().getLocation();
                 loc.getWorld().playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1.0f, 0.5f);
-                new BukkitRunnable() {
+                new CompatRunnable() {
                     @Override
                     public void run() {
                         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.0f);
                         loc.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, loc, 1, 0, 0, 0, 0);
                         event.setDamage(event.getDamage() + 6.0);
                     }
-                }.runTaskLater(pluginInstance, 10L);
+                }.runTaskLater(pluginInstance, loc, 10L);
             }
         }
     }
@@ -178,9 +178,9 @@ class BeeSwarm extends Ability {
             bee.setTarget(living);
             bee.setAnger(200);
             bee.setMetadata("helper", new FixedMetadataValue(plugin, "true"));
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override public void run() { if (bee.isValid()) bee.remove(); }
-            }.runTaskLater(plugin, 200L); // 10s
+            }.runTaskLater(plugin, bee, 200L); // 10s
         }
         return true;
     }
@@ -201,9 +201,9 @@ class WolfPack extends Ability {
             if (target instanceof LivingEntity) wolf.setTarget((LivingEntity) target);
             spawned.add(wolf);
         }
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override public void run() { for (Wolf w : spawned) { if (w.isValid()) w.remove(); } }
-        }.runTaskLater(plugin, 300L);
+        }.runTaskLater(plugin, player, 300L);
         return true;
     }
 }
@@ -217,7 +217,7 @@ class PoisonIvy extends Ability {
         if (target == null) return false;
         Location loc = target.getLocation().add(0.5, 1.0, 0.5);
         loc.getWorld().playSound(loc, Sound.BLOCK_AZALEA_LEAVES_PLACE, 1.0f, 0.8f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -230,7 +230,7 @@ class PoisonIvy extends Ability {
                 }
                 ticks += 10;
             }
-        }.runTaskTimer(plugin, 0L, 10L);
+        }.runTaskTimer(plugin, loc, 0L, 10L);
         return true;
     }
 }
@@ -243,7 +243,7 @@ class SpiderClimb extends Ability {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SPIDER_STEP, 1.0f, 1.5f);
         OverworldAbilities.registerSpiderClimb(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000));
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -262,7 +262,7 @@ class SpiderClimb extends Ability {
                 }
                 ticks += 2;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, player, 0L, 2L);
         return true;
     }
 }
@@ -274,7 +274,7 @@ class BatGlide extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_LOOP, 1.0f, 1.2f);
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -285,7 +285,7 @@ class BatGlide extends Ability {
                 }
                 ticks += 5;
             }
-        }.runTaskTimer(plugin, 0L, 5L);
+        }.runTaskTimer(plugin, player, 0L, 5L);
         return true;
     }
 }
@@ -299,14 +299,14 @@ class SlimeBounce extends Ability {
         Vector dir = player.getLocation().getDirection().setY(0.4).normalize().multiply(1.5);
         player.setVelocity(dir);
         player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 60, 2));
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 if (player.isOnline()) {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 4)); // absolute fall negation
                 }
             }
-        }.runTaskLater(plugin, 10L);
+        }.runTaskLater(plugin, player, 10L);
         return true;
     }
 }
@@ -321,14 +321,14 @@ class RockSlide extends Ability {
         Location loc = target.getLocation().add(0.5, 12.0, 0.5);
         loc.getWorld().playSound(loc, Sound.BLOCK_BASALT_PLACE, 1.0f, 0.8f);
         for (int i = 0; i < 5; i++) {
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override
                 public void run() {
                     org.bukkit.entity.FallingBlock rock = loc.getWorld().spawnFallingBlock(loc.clone().add((Math.random()-0.5)*3.0, 0, (Math.random()-0.5)*3.0), Material.COBBLESTONE.createBlockData());
                     rock.setDropItem(false);
                     rock.setHurtEntities(true);
                 }
-            }.runTaskLater(plugin, i * 3L);
+            }.runTaskLater(plugin, loc, i * 3L);
         }
         return true;
     }
@@ -559,7 +559,7 @@ class Tempest extends Ability {
         Location loc = target.getLocation();
         loc.getWorld().playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.8f);
         for (int i = 0; i < 3; i++) {
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override
                 public void run() {
                     Location strikeLoc = loc.clone().add((Math.random()-0.5)*5.0, 0, (Math.random()-0.5)*5.0);
@@ -571,7 +571,7 @@ class Tempest extends Ability {
                         }
                     }
                 }
-            }.runTaskLater(plugin, i * 15L);
+            }.runTaskLater(plugin, loc, i * 15L);
         }
         return true;
     }

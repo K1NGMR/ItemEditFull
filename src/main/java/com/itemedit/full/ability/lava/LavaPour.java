@@ -7,7 +7,7 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 
 public class LavaPour extends Ability {
     private final ItemEditFull plugin;
@@ -37,7 +37,7 @@ public class LavaPour extends Ability {
         lavaBlock.setType(Material.LAVA);
         lavaBlock.getWorld().playSound(lavaBlock.getLocation(), Sound.ITEM_BUCKET_EMPTY_LAVA, 1.0f, 1.0f);
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 if (lavaBlock.getType() == Material.LAVA) {
@@ -45,7 +45,7 @@ public class LavaPour extends Ability {
                     lavaBlock.getWorld().playSound(lavaBlock.getLocation(), Sound.ITEM_BUCKET_FILL_LAVA, 1.0f, 1.0f);
                 }
             }
-        }.runTaskLater(plugin, (long) (duration * 20));
+        }.runTaskLater(plugin, lavaBlock.getLocation(), (long) (duration * 20));
 
         return true;
     }

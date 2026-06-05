@@ -20,7 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -135,7 +135,7 @@ class ZombieSwarm extends Ability {
             summoned.add(zombie);
         }
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 for (Zombie z : summoned) {
@@ -145,7 +145,7 @@ class ZombieSwarm extends Ability {
                     }
                 }
             }
-        }.runTaskLater(plugin, (long) (duration * 20));
+        }.runTaskLater(plugin, player, (long) (duration * 20));
 
         return true;
     }
@@ -206,7 +206,7 @@ class ZombieInfection extends Ability {
         living.getWorld().playSound(living.getLocation(), Sound.ENTITY_ZOMBIE_INFECT, 1.0f, 1.1f);
         ZombieAbilities.registerInfected(living.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int count = 0;
             @Override
             public void run() {
@@ -217,7 +217,7 @@ class ZombieInfection extends Ability {
                 living.getWorld().spawnParticle(Particle.SPELL_MOB, living.getLocation().add(0, 1, 0), 8, 0.2, 0.3, 0.2, 0);
                 count++;
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, living, 0L, 20L);
 
         return true;
     }
@@ -238,7 +238,7 @@ class ZombieRage extends Ability {
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_HURT, 1.0f, 0.7f);
         ZombieAbilities.registerRage(player.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -249,7 +249,7 @@ class ZombieRage extends Ability {
                 player.getWorld().spawnParticle(Particle.VILLAGER_ANGRY, player.getLocation().add(0, 1.5, 0), 3, 0.2, 0.2, 0.2, 0);
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, player, 0L, 20L);
 
         return true;
     }

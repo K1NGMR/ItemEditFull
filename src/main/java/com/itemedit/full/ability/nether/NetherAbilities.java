@@ -23,7 +23,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.Collection;
@@ -185,14 +185,14 @@ class MagmaSpit extends Ability {
             Location blockLoc = block.getLocation();
             block.setType(Material.MAGMA_BLOCK);
             
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override
                 public void run() {
                     if (blockLoc.getBlock().getType() == Material.MAGMA_BLOCK) {
                         blockLoc.getBlock().setType(original);
                     }
                 }
-            }.runTaskLater(plugin, (long) (duration * 20));
+            }.runTaskLater(plugin, blockLoc, (long) (duration * 20));
         }
         return true;
     }
@@ -266,7 +266,7 @@ class MeteorStrikeGeneric extends Ability {
         meteor.setMetadata("meteor_radius", new FixedMetadataValue(plugin, customRadius));
         meteor.setMetadata("meteor_size", new FixedMetadataValue(plugin, size));
 
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -277,7 +277,7 @@ class MeteorStrikeGeneric extends Ability {
                 meteor.getWorld().spawnParticle(Particle.FLAME, meteor.getLocation(), 4, 0.1, 0.1, 0.1, 0.02);
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, meteor, 0L, 2L);
 
         return true;
     }

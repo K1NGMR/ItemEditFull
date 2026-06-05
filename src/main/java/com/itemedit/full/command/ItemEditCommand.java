@@ -2,6 +2,7 @@ package com.itemedit.full.command;
 
 import com.itemedit.full.ItemEditFull;
 import com.itemedit.full.ability.Ability;
+import com.itemedit.full.utils.LanguageManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -30,6 +31,10 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         this.plugin = plugin;
     }
 
+    private void msg(Player p, String key, Object... args) {
+        p.sendMessage(LanguageManager.getMessage(p, key, args));
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
@@ -39,14 +44,14 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
         Player player = (Player) sender;
         if (!player.hasPermission("itemedit.use")) {
-            player.sendMessage("§cYou do not have permission to use this command.");
+            msg(player, "no_permission");
             return true;
         }
 
         if (args.length == 0) {
             ItemStack item = player.getInventory().getItemInMainHand();
             if (item == null || item.getType().isAir()) {
-                player.sendMessage("§cYou must hold an item in your main hand.");
+                msg(player, "hold_item");
                 return true;
             }
             plugin.getGuiManager().openMainMenu(player);
@@ -56,12 +61,12 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
         if (sub.equals("reload")) {
             if (!player.hasPermission("itemedit.admin")) {
-                player.sendMessage("§cYou do not have permission to reload the configuration.");
+                msg(player, "no_permission_reload");
                 return true;
             }
             plugin.reloadConfig();
             plugin.getWeaponConfigManager().reload();
-            player.sendMessage("§aItemEdit configuration and weapon.yml successfully reloaded!");
+            msg(player, "reload_success");
             return true;
         }
 
@@ -72,7 +77,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType().isAir()) {
-            player.sendMessage("§cYou must hold an item in your main hand.");
+            msg(player, "hold_item");
             return true;
         }
 
@@ -150,19 +155,19 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
     private void handleRename(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie rename <name>");
+            msg(player, "usage_rename");
             return;
         }
         String name = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         ItemMeta meta = item.getItemMeta();
         meta.displayName(parseText(name));
         saveItem(player, item, meta);
-        player.sendMessage("§aItem renamed successfully!");
+        msg(player, "rename_success");
     }
 
     private void handleLore(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie lore <add/set/remove/clear> [args]");
+            msg(player, "usage_lore");
             return;
         }
 
@@ -176,24 +181,24 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         switch (operation) {
             case "add":
                 if (args.length < 3) {
-                    player.sendMessage("§cUsage: /ie lore add <text>");
+                    msg(player, "usage_lore_add");
                     return;
                 }
                 String addedText = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 lore.add(parseText(addedText));
                 meta.lore(lore);
                 saveItem(player, item, meta);
-                player.sendMessage("§aAdded lore line.");
+                msg(player, "lore_add_success");
                 break;
             case "set":
                 if (args.length < 4) {
-                    player.sendMessage("§cUsage: /ie lore set <line> <text>");
+                    msg(player, "usage_lore_set");
                     return;
                 }
                 try {
                     int line = Integer.parseInt(args[2]) - 1;
                     if (line < 0 || line > lore.size()) {
-                        player.sendMessage("§cInvalid line number. Current size is " + lore.size() + ".");
+                        msg(player, "lore_invalid_line", "%size%", lore.size());
                         return;
                     }
                     String text = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
@@ -205,44 +210,44 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                     }
                     meta.lore(lore);
                     saveItem(player, item, meta);
-                    player.sendMessage("§aSet lore line " + (line + 1) + ".");
+                    msg(player, "lore_set_success", "%line%", line + 1);
                 } catch (NumberFormatException e) {
-                    player.sendMessage("§cLine must be a number.");
+                    msg(player, "line_must_be_number");
                 }
                 break;
             case "remove":
                 if (args.length < 3) {
-                    player.sendMessage("§cUsage: /ie lore remove <line>");
+                    msg(player, "usage_lore_remove");
                     return;
                 }
                 try {
                     int line = Integer.parseInt(args[2]) - 1;
                     if (line < 0 || line >= lore.size()) {
-                        player.sendMessage("§cLine number out of bounds.");
+                        msg(player, "lore_out_of_bounds");
                         return;
                     }
                     lore.remove(line);
                     meta.lore(lore);
                     saveItem(player, item, meta);
-                    player.sendMessage("§aRemoved lore line " + (line + 1) + ".");
+                    msg(player, "lore_remove_success", "%line%", line + 1);
                 } catch (NumberFormatException e) {
-                    player.sendMessage("§cLine must be a number.");
+                    msg(player, "line_must_be_number");
                 }
                 break;
             case "clear":
                 meta.lore(null);
                 saveItem(player, item, meta);
-                player.sendMessage("§aLore cleared.");
+                msg(player, "lore_clear_success");
                 break;
             default:
-                player.sendMessage("§cUnknown operation. Use add, set, remove, or clear.");
+                msg(player, "unknown_operation");
                 break;
         }
     }
 
     private void handleEnchant(Player player, ItemStack item, String[] args) {
         if (args.length < 3) {
-            player.sendMessage("§cUsage: /ie enchant <enchantment> <level>");
+            msg(player, "usage_enchant");
             return;
         }
 
@@ -251,7 +256,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         try {
             level = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            player.sendMessage("§cLevel must be a number.");
+            msg(player, "level_must_be_number");
             return;
         }
 
@@ -264,7 +269,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         }
 
         if (enchantment == null) {
-            player.sendMessage("§cEnchantment not found.");
+            msg(player, "enchant_not_found");
             return;
         }
 
@@ -272,30 +277,30 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             item.removeEnchantment(enchantment);
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aRemoved enchantment " + enchantment.getKey().getKey() + ".");
+            msg(player, "enchant_remove_success", "%enchant%", enchantment.getKey().getKey());
         } else {
             ItemMeta meta = item.getItemMeta();
             meta.addEnchant(enchantment, level, true);
             saveItem(player, item, meta);
-            player.sendMessage("§aAdded enchantment " + enchantment.getKey().getKey() + " Level " + level + ".");
+            msg(player, "enchant_add_success", "%enchant%", enchantment.getKey().getKey(), "%level%", level);
         }
     }
 
     private void handleUnbreakable(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie unbreakable <true/false>");
+            msg(player, "usage_unbreakable");
             return;
         }
         boolean state = Boolean.parseBoolean(args[1]);
         ItemMeta meta = item.getItemMeta();
         meta.setUnbreakable(state);
         saveItem(player, item, meta);
-        player.sendMessage("§aSet unbreakable to " + state + ".");
+        msg(player, "unbreakable_success", "%state%", state);
     }
 
     private void handleFlag(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie flag <add/remove/clear> [flag]");
+            msg(player, "usage_flag");
             return;
         }
 
@@ -307,12 +312,12 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 meta.removeItemFlags(flag);
             }
             saveItem(player, item, meta);
-            player.sendMessage("§aCleared all item flags.");
+            msg(player, "flag_clear_success");
             return;
         }
 
         if (args.length < 3) {
-            player.sendMessage("§cUsage: /ie flag <add/remove> <flag>");
+            msg(player, "usage_flag_op");
             return;
         }
 
@@ -330,18 +335,18 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         }
 
         if (flag == null) {
-            player.sendMessage("§cInvalid item flag.");
+            msg(player, "invalid_flag");
             return;
         }
 
         if (operation.equalsIgnoreCase("add")) {
             meta.addItemFlags(flag);
-            player.sendMessage("§aAdded flag " + flag.name());
+            msg(player, "flag_add_success", "%flag%", flag.name());
         } else if (operation.equalsIgnoreCase("remove")) {
             meta.removeItemFlags(flag);
-            player.sendMessage("§aRemoved flag " + flag.name());
+            msg(player, "flag_remove_success", "%flag%", flag.name());
         } else {
-            player.sendMessage("§cUnknown operation. Use add, remove, or clear.");
+            msg(player, "unknown_operation");
             return;
         }
         saveItem(player, item, meta);
@@ -388,7 +393,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
     private void handleAttribute(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie attribute <add/remove/clear> [attribute] [value]");
+            msg(player, "usage_attribute");
             return;
         }
 
@@ -400,12 +405,12 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 meta.removeAttributeModifier(attr);
             }
             saveItem(player, item, meta);
-            player.sendMessage("§aCleared all attributes.");
+            msg(player, "attribute_clear_success");
             return;
         }
 
         if (args.length < 3) {
-            player.sendMessage("§cUsage: /ie attribute <add/remove> <attribute> [value]");
+            msg(player, "usage_attribute_op");
             return;
         }
 
@@ -413,20 +418,20 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         Attribute attribute = getAttributeByName(attrName);
 
         if (attribute == null) {
-            player.sendMessage("§cInvalid attribute.");
+            msg(player, "invalid_attribute");
             return;
         }
 
         if (operation.equalsIgnoreCase("add")) {
             if (args.length < 4) {
-                player.sendMessage("§cUsage: /ie attribute add <attribute> <value>");
+                msg(player, "usage_attribute_add");
                 return;
             }
             double val;
             try {
                 val = Double.parseDouble(args[3]);
             } catch (NumberFormatException e) {
-                player.sendMessage("§cValue must be a number.");
+                msg(player, "value_must_be_number");
                 return;
             }
             AttributeModifier modifier = new AttributeModifier(
@@ -436,12 +441,12 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                     AttributeModifier.Operation.ADD_NUMBER
             );
             meta.addAttributeModifier(attribute, modifier);
-            player.sendMessage("§aAdded attribute " + attribute.name() + " with value " + val + ".");
+            msg(player, "attribute_add_success", "%attr%", attribute.name(), "%val%", val);
         } else if (operation.equalsIgnoreCase("remove")) {
             meta.removeAttributeModifier(attribute);
-            player.sendMessage("§aRemoved attribute " + attribute.name() + ".");
+            msg(player, "attribute_remove_success", "%attr%", attribute.name());
         } else {
-            player.sendMessage("§cUnknown operation. Use add, remove, or clear.");
+            msg(player, "unknown_operation");
             return;
         }
         saveItem(player, item, meta);
@@ -475,18 +480,18 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             }
         }
         saveItem(player, item, meta);
-        player.sendMessage("§aSet hide tooltips to " + hide + ".");
+        msg(player, "hidetooltips_success", "%state%", hide);
     }
 
     private void handleAbility(Player player, ItemStack item, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /ie ability <add/remove/clear/list> [ability]");
+            msg(player, "usage_ability");
             return;
         }
 
         String operation = args[1].toLowerCase();
         if (operation.equalsIgnoreCase("list")) {
-            player.sendMessage("§6§lAvailable Abilities:");
+            msg(player, "ability_list_header");
             for (Ability ability : plugin.getAbilityManager().getRegisteredAbilities()) {
                 player.sendMessage("§e- " + ability.getId() + " §7(" + ability.getName() + "): " + ability.getDescription());
             }
@@ -497,12 +502,12 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             plugin.getAbilityManager().setItemAbilities(item, new ArrayList<>());
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aCleared all abilities from your item.");
+            msg(player, "ability_clear_success");
             return;
         }
 
         if (args.length < 3) {
-            player.sendMessage("§cUsage: /ie ability <add/remove> <ability_id>");
+            msg(player, "usage_ability_op");
             return;
         }
 
@@ -512,94 +517,36 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         if (operation.equalsIgnoreCase("add")) {
             Ability ability = plugin.getAbilityManager().getAbility(abilityId);
             if (ability == null) {
-                player.sendMessage("§cAbility '" + abilityId + "' does not exist.");
+                msg(player, "ability_not_exist", "%ability%", abilityId);
                 return;
             }
             if (current.contains(abilityId)) {
-                player.sendMessage("§cThis item already has this ability.");
+                msg(player, "ability_already_has");
                 return;
             }
             current.add(abilityId);
             plugin.getAbilityManager().setItemAbilities(item, current);
-
-            // Setup weapon key in PDC and save in weapon.yml
-            ItemMeta meta = item.getItemMeta();
-            org.bukkit.persistence.PersistentDataContainer pdc = meta.getPersistentDataContainer();
-            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
-            String weaponKey;
-            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
-                weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
-            } else {
-                String rawName = meta.hasDisplayName() ? LegacyComponentSerializer.legacySection().serialize(meta.displayName()) : item.getType().name();
-                String cleanName = rawName.replaceAll("(?i)§[0-9a-fk-orx]", "")
-                        .replaceAll("<[^>]*>", "")
-                        .replaceAll("[^a-zA-Z0-9_]", "_")
-                        .toLowerCase();
-                if (cleanName.isEmpty() || cleanName.replaceAll("_", "").isEmpty()) {
-                    cleanName = item.getType().name().toLowerCase();
-                }
-                weaponKey = cleanName + "_" + (System.currentTimeMillis() % 10000);
-                pdc.set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
-                item.setItemMeta(meta);
-            }
-
-            // Save settings in weapon.yml
-            org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
-            String pathPrefix = "weapons." + weaponKey;
-            weaponCfg.set(pathPrefix + ".material", item.getType().name());
-            if (meta.hasDisplayName()) {
-                weaponCfg.set(pathPrefix + ".display-name", LegacyComponentSerializer.legacySection().serialize(meta.displayName()));
-            }
-            weaponCfg.set(pathPrefix + ".abilities", current);
-
-            String settingsPath = pathPrefix + ".settings." + abilityId;
-            if (!weaponCfg.contains(settingsPath)) {
-                weaponCfg.set(settingsPath + ".cooldown", 5.0);
-                if (plugin.getConfig().contains("abilities." + abilityId)) {
-                    org.bukkit.configuration.ConfigurationSection section = plugin.getConfig().getConfigurationSection("abilities." + abilityId);
-                    if (section != null) {
-                        for (String key : section.getKeys(false)) {
-                            weaponCfg.set(settingsPath + "." + key, plugin.getConfig().get("abilities." + abilityId + "." + key));
-                        }
-                    }
-                }
-            }
-            plugin.getWeaponConfigManager().save();
-
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aAdded ability '" + ability.getName() + "' and registered in weapon.yml (Key: " + weaponKey + ").");
+            msg(player, "ability_add_success", "%ability%", ability.getName());
         } else if (operation.equalsIgnoreCase("remove")) {
             if (!current.contains(abilityId)) {
-                player.sendMessage("§cThis item does not have this ability.");
+                msg(player, "ability_not_has");
                 return;
             }
             current.remove(abilityId);
             plugin.getAbilityManager().setItemAbilities(item, current);
-
-            ItemMeta meta = item.getItemMeta();
-            org.bukkit.persistence.PersistentDataContainer pdc = meta.getPersistentDataContainer();
-            NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
-            if (pdc.has(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING)) {
-                String weaponKey = pdc.get(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING);
-                org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
-                String pathPrefix = "weapons." + weaponKey;
-                weaponCfg.set(pathPrefix + ".abilities", current);
-                weaponCfg.set(pathPrefix + ".settings." + abilityId, null);
-                plugin.getWeaponConfigManager().save();
-            }
-
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
-            player.sendMessage("§aRemoved ability '" + abilityId + "' and updated weapon.yml.");
+            msg(player, "ability_remove_success", "%ability%", abilityId);
         } else {
-            player.sendMessage("§cUnknown operation. Use add, remove, or list.");
+            msg(player, "ability_unknown_op");
         }
     }
 
     private void handleCustom(Player player, ItemStack item, String[] args) {
         if (args.length < 4) {
-            player.sendMessage("§cUsage: /ie custom <ability_id> <parameter> <value>");
+            msg(player, "usage_custom");
             player.sendMessage("§7Example: /ie custom lava_spit cooldown 2.5");
             return;
         }
@@ -610,7 +557,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
 
         Ability ability = plugin.getAbilityManager().getAbility(abilityId);
         if (ability == null) {
-            player.sendMessage("§cAbility '" + abilityId + "' does not exist.");
+            msg(player, "ability_not_exist", "%ability%", abilityId);
             return;
         }
 
@@ -623,17 +570,89 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             if (valStr.contains(".") || param.equalsIgnoreCase("cooldown") || param.equalsIgnoreCase("damage") || param.equalsIgnoreCase("health_heal")) {
                 double val = Double.parseDouble(valStr);
                 ability.setCustomParam(plugin, item, param, val);
-                player.sendMessage("§aSet custom parameter '" + param + "' to " + val + " for ability " + ability.getName() + " on this item.");
+                msg(player, "custom_success", "%param%", param, "%ability%", ability.getName(), "%val%", val);
             } else {
                 int val = Integer.parseInt(valStr);
                 ability.setCustomParam(plugin, item, param, val);
-                player.sendMessage("§aSet custom parameter '" + param + "' to " + val + " for ability " + ability.getName() + " on this item.");
+                msg(player, "custom_success", "%param%", param, "%ability%", ability.getName(), "%val%", val);
             }
-            // Explicitly sync item slot to client after custom param edit
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
         } catch (NumberFormatException e) {
-            player.sendMessage("§cValue must be a valid number.");
+            msg(player, "value_must_be_number");
+        }
+    }
+
+    private void handleGive(Player sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(LanguageManager.getMessage(sender, "usage_give"));
+            return;
+        }
+
+        Player target = sender;
+        String weaponKey;
+
+        if (args.length >= 3) {
+            target = org.bukkit.Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(LanguageManager.getMessage(sender, "player_not_found"));
+                return;
+            }
+            weaponKey = args[2].toLowerCase();
+        } else {
+            weaponKey = args[1].toLowerCase();
+        }
+
+        org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
+        String path = "weapons." + weaponKey;
+        if (!weaponCfg.contains(path)) {
+            sender.sendMessage(LanguageManager.getMessage(sender, "give_not_found", "%weapon%", weaponKey));
+            return;
+        }
+
+        String matStr = weaponCfg.getString(path + ".material", "BLAZE_ROD");
+        org.bukkit.Material material = org.bukkit.Material.BLAZE_ROD;
+        try {
+            material = org.bukkit.Material.valueOf(matStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cWarning: Invalid material '" + matStr + "' in config. Using BLAZE_ROD.");
+        }
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            sender.sendMessage("§cError: Could not generate item metadata.");
+            return;
+        }
+
+        if (weaponCfg.contains(path + ".display-name")) {
+            String dn = weaponCfg.getString(path + ".display-name");
+            meta.displayName(parseText(dn));
+        }
+
+        if (weaponCfg.contains(path + ".lore")) {
+            List<String> rawLore = weaponCfg.getStringList(path + ".lore");
+            List<Component> parsedLore = rawLore.stream().map(this::parseText).collect(Collectors.toList());
+            meta.lore(parsedLore);
+        }
+
+        if (weaponCfg.contains(path + ".custom-model-data")) {
+            meta.setCustomModelData(weaponCfg.getInt(path + ".custom-model-data"));
+        }
+
+        NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
+        meta.getPersistentDataContainer().set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
+        item.setItemMeta(meta);
+
+        List<String> abilities = weaponCfg.getStringList(path + ".abilities");
+        if (abilities != null && !abilities.isEmpty()) {
+            plugin.getAbilityManager().setItemAbilities(item, abilities);
+        }
+
+        target.getInventory().addItem(item);
+        sender.sendMessage(LanguageManager.getMessage(sender, "give_success", "%weapon%", weaponKey, "%player%", target.getName()));
+        if (!target.equals(sender)) {
+            target.sendMessage(LanguageManager.getMessage(target, "give_success", "%weapon%", weaponKey, "%player%", target.getName())); // Note: Key can be reuse/adapted
         }
     }
 
@@ -720,78 +739,5 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
     private List<String> filter(List<String> list, String prefix) {
         String lower = prefix.toLowerCase();
         return list.stream().filter(s -> s.toLowerCase().startsWith(lower)).collect(Collectors.toList());
-    }
-
-    private void handleGive(Player sender, String[] args) {
-        if (args.length < 2) {
-            sender.sendMessage("§cUsage: /ie give [player] <weapon_key>");
-            return;
-        }
-
-        Player target = sender;
-        String weaponKey;
-
-        if (args.length >= 3) {
-            target = org.bukkit.Bukkit.getPlayer(args[1]);
-            if (target == null) {
-                sender.sendMessage("§cPlayer not found: " + args[1]);
-                return;
-            }
-            weaponKey = args[2].toLowerCase();
-        } else {
-            weaponKey = args[1].toLowerCase();
-        }
-
-        org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();
-        String path = "weapons." + weaponKey;
-        if (!weaponCfg.contains(path)) {
-            sender.sendMessage("§cWeapon '" + weaponKey + "' not found in weapon.yml.");
-            return;
-        }
-
-        String matStr = weaponCfg.getString(path + ".material", "BLAZE_ROD");
-        org.bukkit.Material material = org.bukkit.Material.BLAZE_ROD;
-        try {
-            material = org.bukkit.Material.valueOf(matStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            sender.sendMessage("§cWarning: Invalid material '" + matStr + "' in config. Using BLAZE_ROD.");
-        }
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            sender.sendMessage("§cError: Could not generate item metadata.");
-            return;
-        }
-
-        if (weaponCfg.contains(path + ".display-name")) {
-            String dn = weaponCfg.getString(path + ".display-name");
-            meta.displayName(parseText(dn));
-        }
-
-        if (weaponCfg.contains(path + ".lore")) {
-            List<String> rawLore = weaponCfg.getStringList(path + ".lore");
-            List<Component> parsedLore = rawLore.stream().map(this::parseText).collect(Collectors.toList());
-            meta.lore(parsedLore);
-        }
-
-        if (weaponCfg.contains(path + ".custom-model-data")) {
-            meta.setCustomModelData(weaponCfg.getInt(path + ".custom-model-data"));
-        }
-
-        NamespacedKey weaponKeyPdc = new NamespacedKey(plugin, "weapon_key");
-        meta.getPersistentDataContainer().set(weaponKeyPdc, org.bukkit.persistence.PersistentDataType.STRING, weaponKey);
-        item.setItemMeta(meta);
-
-        List<String> abilities = weaponCfg.getStringList(path + ".abilities");
-        if (abilities != null && !abilities.isEmpty()) {
-            plugin.getAbilityManager().setItemAbilities(item, abilities);
-        }
-
-        target.getInventory().addItem(item);
-        sender.sendMessage("§aSuccessfully gave " + target.getName() + " the weapon: " + weaponKey);
-        if (!target.equals(sender)) {
-            target.sendMessage("§aYou have been given a custom weapon: " + weaponKey);
-        }
     }
 }

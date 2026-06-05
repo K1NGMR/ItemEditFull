@@ -13,7 +13,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import com.itemedit.full.utils.CompatRunnable;
+import com.itemedit.full.utils.SchedulerUtils;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -183,21 +184,23 @@ public class NewExpansionAbilities implements Listener {
         plugin.getServer().getPluginManager().registerEvents(new NewExpansionAbilities(), plugin);
 
         // Magma Trail Damage Loop
-        new BukkitRunnable() {
+        new CompatRunnable() {
             @Override
             public void run() {
                 synchronized (magmaTrailLocations) {
                     Iterator<Location> it = magmaTrailLocations.iterator();
                     while (it.hasNext()) {
                         Location loc = it.next();
-                        loc.getWorld().spawnParticle(Particle.FLAME, loc, 3, 0.2, 0.1, 0.2, 0.02);
-                        for (Entity ent : loc.getWorld().getNearbyEntities(loc, 1.2, 1.2, 1.2)) {
-                            if (ent instanceof LivingEntity) {
-                                LivingEntity le = (LivingEntity) ent;
-                                le.setFireTicks(40);
-                                le.damage(1.5);
+                        SchedulerUtils.runTask(plugin, loc, () -> {
+                            loc.getWorld().spawnParticle(Particle.FLAME, loc, 3, 0.2, 0.1, 0.2, 0.02);
+                            for (Entity ent : loc.getWorld().getNearbyEntities(loc, 1.2, 1.2, 1.2)) {
+                                if (ent instanceof LivingEntity) {
+                                    LivingEntity le = (LivingEntity) ent;
+                                    le.setFireTicks(40);
+                                    le.damage(1.5);
+                                }
                             }
-                        }
+                        });
                     }
                 }
             }
@@ -207,7 +210,7 @@ public class NewExpansionAbilities implements Listener {
     public static void addMagmaTrailLocation(Location loc) {
         synchronized (magmaTrailLocations) {
             magmaTrailLocations.add(loc);
-            new BukkitRunnable() {
+            new CompatRunnable() {
                 @Override
                 public void run() {
                     synchronized (magmaTrailLocations) {
@@ -290,14 +293,14 @@ class MagmaTrail extends Ability {
     private final ItemEditFull plugin;
     public MagmaTrail(ItemEditFull pl) { super("magma_trail", "Magma Trail", "Leaves a blazing path."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
                 if (!p.isOnline() || ticks++ > 10) { cancel(); return; }
                 NewExpansionAbilities.addMagmaTrailLocation(p.getLocation().add(0, 0.1, 0));
             }
-        }.runTaskTimer(plugin, 0L, 10L);
+        }.runTaskTimer(plugin, p, 0L, 10L);
         return true;
     }
 }
@@ -313,7 +316,7 @@ class BlazeAura extends Ability {
     private final ItemEditFull plugin;
     public BlazeAura(ItemEditFull pl) { super("blaze_aura", "Blaze Aura", "Burns nearby targets."); this.plugin = pl; }
     @Override public boolean trigger(Player p, ItemStack i) {
-        new BukkitRunnable() {
+        new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
@@ -328,7 +331,7 @@ class BlazeAura extends Ability {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, p, 0L, 20L);
         return true;
     }
 }
