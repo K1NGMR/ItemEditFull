@@ -11,7 +11,7 @@ public class SchedulerUtils {
     static {
         boolean folia = false;
         try {
-            Class.forName("io.papermc.paper.threadedregions.scheduler.global.GlobalRegionScheduler");
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
             folia = true;
         } catch (ClassNotFoundException e) {
             // Not Folia
