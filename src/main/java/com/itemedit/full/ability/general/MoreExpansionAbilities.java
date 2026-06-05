@@ -1254,7 +1254,7 @@ class VoidCollapse extends Ability {
                     target.getWorld().createExplosion(target, 3.5f, false, false);
                     return;
                 }
-                target.getWorld().spawnParticle(Particle.DRAGON_BREATH, target, 15, 2.0, 2.0, 2.0, 0.02);
+                target.getWorld().spawnParticle(Particle.DRAGON_BREATH, target, 15, 2.0, 2.0, 2.0, 0.02, 1.0f);
                 target.getWorld().spawnParticle(Particle.PORTAL, target, 20, 1.0, 1.0, 1.0, 0.05);
                 for (Entity ent : target.getWorld().getNearbyEntities(target, 5.0, 3.0, 5.0)) {
                     if (ent instanceof LivingEntity && !ent.equals(p)) {
@@ -2860,13 +2860,13 @@ class VenomSpitAbility extends Ability {
                               if (ticks++ > 150 || !p.isOnline()) { this.cancel(); return; }
                               current.add(dir);
                               current.getWorld().spawnParticle(Particle.PORTAL, current, 45, 0.8, 0.8, 0.8, 0.15);
-                              current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 10, 0.3, 0.3, 0.3, 0.05);
+                              current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 10, 0.3, 0.3, 0.3, 0.05, 1.0f);
                               current.getWorld().spawnParticle(Particle.END_ROD, current, 8, 0.2, 0.2, 0.2, 0.05);
                               Block b = current.getBlock();
                               if ((b.getType() != Material.AIR && b.getType().isSolid()) || current.getY() <= individualImpact.getY()) {
                                   current.getWorld().createExplosion(current, index == 0 ? 35f : 15f, false, false);
                                   current.getWorld().spawnParticle(Particle.EXPLOSION_HUGE, current, index == 0 ? 40 : 15, 2, 2, 2);
-                                  current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 100, 3, 3, 3, 0.2);
+                                  current.getWorld().spawnParticle(Particle.DRAGON_BREATH, current, 100, 3.0, 3.0, 3.0, 0.2, 1.0f);
                                   current.getWorld().playSound(current, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 10f, 0.5f);
 
                                   double radius = index == 0 ? 35.0 : 15.0;

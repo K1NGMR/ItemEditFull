@@ -347,7 +347,7 @@ class DragonRoar extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         Location loc = player.getLocation();
         player.getWorld().playSound(loc, Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.7f);
-        loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 30, 3.0, 1.0, 3.0, 0.05);
+        loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 30, 3.0, 1.0, 3.0, 0.05, 1.0f);
         for (Entity ent : player.getNearbyEntities(6.0, 3.0, 6.0)) {
             if (ent instanceof LivingEntity && !ent.equals(player)) {
                 LivingEntity living = (LivingEntity) ent;
@@ -373,7 +373,7 @@ class DragonDash extends Ability {
             @Override
             public void run() {
                 if (step > 6 || !player.isOnline()) { cancel(); return; }
-                player.getWorld().spawnParticle(Particle.DRAGON_BREATH, player.getLocation(), 5, 0.2, 0.2, 0.2, 0);
+                player.getWorld().spawnParticle(Particle.DRAGON_BREATH, player.getLocation(), 5, 0.2, 0.2, 0.2, 0.0, 1.0f);
                 for (Entity ent : player.getNearbyEntities(2.0, 2.0, 2.0)) {
                     if (ent instanceof LivingEntity && !ent.equals(player)) {
                         ((LivingEntity) ent).damage(6.0, player);

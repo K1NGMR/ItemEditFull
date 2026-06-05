@@ -141,7 +141,7 @@ class SculkSensorTrap extends Ability {
 
         final Location trapLoc = target.clone();
         trapLoc.getWorld().playSound(trapLoc, Sound.BLOCK_SCULK_SENSOR_PLACE, 1.0f, 1.0f);
-        trapLoc.getWorld().spawnParticle(Particle.SCULK_CHARGE, trapLoc, 10, 0.2, 0.2, 0.2, 0.05);
+        trapLoc.getWorld().spawnParticle(Particle.SCULK_CHARGE, trapLoc, 10, 0.2, 0.2, 0.2, 0.05, 1.0f);
 
         new CompatRunnable() {
             int ticks = 0;
