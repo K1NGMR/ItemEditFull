@@ -2,6 +2,7 @@ package com.itemedit.full.ability.lava;
 
 import com.itemedit.full.ItemEditFull;
 import com.itemedit.full.ability.Ability;
+import com.itemedit.full.utils.EffectUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -67,10 +68,22 @@ public class LavaAbsorption extends Ability {
         // Add Fire Resistance
         player.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, (int) (duration * 20), 0));
 
-        // Particles and Sounds
-        player.getWorld().spawnParticle(Particle.LAVA, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1.0f, 1.0f);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1.0f, 1.0f);
+        // Molten light draws inward from the absorbed lava toward the player in shrinking rings,
+        // then vents off as a plume of steam once it reaches them - visually distinct "inhale" shape.
+        double drawRadius = Math.max(2.0, radius);
+        int pulses = 4;
+        EffectUtils.staggered(plugin, player, pulses, 3L, index -> {
+            double r = drawRadius * (1.0 - ((double) index / pulses));
+            EffectUtils.ring(loc.clone().add(0, 0.2, 0), Math.max(0.3, r), 14,
+                    new EffectUtils.Layer(Particle.LAVA, 1, 0.05, 0.05, 0.05, 0.01));
+        });
+        EffectUtils.burst(player.getLocation().add(0, 1, 0),
+                new EffectUtils.Layer(Particle.LAVA, 10, 0.4, 0.5, 0.4, 0.05),
+                new EffectUtils.Layer(Particle.CLOUD, 18, 0.5, 0.6, 0.5, 0.08));
+        EffectUtils.fanfare(player.getLocation(),
+                new EffectUtils.SoundLayer(Sound.BLOCK_LAVA_EXTINGUISH, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_PLAYER_BURP, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_FIRE_EXTINGUISH, 0.8f, 1.2f));
 
         player.sendMessage("§6Absorbed " + convertedCount + " lava blocks!");
         return true;

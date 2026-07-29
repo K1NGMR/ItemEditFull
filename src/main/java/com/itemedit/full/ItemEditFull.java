@@ -11,11 +11,16 @@ public final class ItemEditFull extends JavaPlugin {
     private AbilityManager abilityManager;
     private ItemEditGui guiManager;
     private WeaponConfigManager weaponConfigManager;
+    private com.itemedit.full.config.AbilityConfigManager abilityConfigManager;
 
     @Override
     public void onEnable() {
         // Save config
         saveDefaultConfig();
+
+        // Initialize Ability Config Manager
+        abilityConfigManager = new com.itemedit.full.config.AbilityConfigManager(this);
+        abilityConfigManager.setup();
 
         // Initialize Weapon Config Manager
         weaponConfigManager = new WeaponConfigManager(this);
@@ -52,16 +57,32 @@ public final class ItemEditFull extends JavaPlugin {
         getServer().getPluginManager().registerEvents(fireAura, this);
 
         // Register all grouped abilities (115 premium + base)
+        com.itemedit.full.ability.lava.LavaExpansionAbilities.register(this);
         com.itemedit.full.ability.warden.WardenAbilities.register(this);
+        com.itemedit.full.ability.warden.WardenExpansionAbilities.register(this);
         com.itemedit.full.ability.undead.ZombieAbilities.register(this);
+        com.itemedit.full.ability.undead.ZombieExpansionAbilities.register(this);
         com.itemedit.full.ability.undead.SkeletonAbilities.register(this);
+        com.itemedit.full.ability.undead.SkeletonExpansionAbilities.register(this);
         com.itemedit.full.ability.end.EndAbilities.register(this);
+        com.itemedit.full.ability.end.EndExpansionAbilities.register(this);
         com.itemedit.full.ability.nether.NetherAbilities.register(this);
+        com.itemedit.full.ability.nether.NetherExpansionAbilities.register(this);
         com.itemedit.full.ability.general.GeneralAbilities.register(this);
+        com.itemedit.full.ability.general.GeneralExpansionAbilities.register(this);
         com.itemedit.full.ability.general.OverworldAbilities.register(this);
+        com.itemedit.full.ability.general.OverworldExpansionAbilities.register(this);
         com.itemedit.full.ability.general.MobAbilities.register(this);
+        com.itemedit.full.ability.general.MobExpansionAbilities.register(this);
         com.itemedit.full.ability.general.NewExpansionAbilities.register(this);
         com.itemedit.full.ability.general.MoreExpansionAbilities.register(this);
+        com.itemedit.full.ability.general.ArchiveExpansionAbilities.register(this);
+        com.itemedit.full.ability.archaeology.ArchaeologyAbilities.register(this);
+        com.itemedit.full.ability.village.VillageAbilities.register(this);
+        com.itemedit.full.ability.curse.CurseAbilities.register(this);
+        com.itemedit.full.ability.chrono.ChronoAbilities.register(this);
+        com.itemedit.full.ability.bard.BardAbilities.register(this);
+        com.itemedit.full.ability.technoblade.TechnobladeAbilities.register(this);
     }
 
     public AbilityManager getAbilityManager() {
@@ -74,6 +95,10 @@ public final class ItemEditFull extends JavaPlugin {
 
     public WeaponConfigManager getWeaponConfigManager() {
         return weaponConfigManager;
+    }
+
+    public com.itemedit.full.config.AbilityConfigManager getAbilityConfigManager() {
+        return abilityConfigManager;
     }
 
     @Override

@@ -66,6 +66,7 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             }
             plugin.reloadConfig();
             plugin.getWeaponConfigManager().reload();
+            plugin.getAbilityConfigManager().reload();
             msg(player, "reload_success");
             return true;
         }
@@ -139,12 +140,21 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
         player.sendMessage("§e/ie reload §7- Reloads config.yml and weapon.yml files.");
     }
 
+    // Detects a MiniMessage-style tag such as <red>, </bold>, <#ffAA00> without matching
+    // stray comparison text like "a < b > c" or "<3".
+    private static final java.util.regex.Pattern MINI_TAG =
+            java.util.regex.Pattern.compile("</?[a-zA-Z#][^<>]*>");
+
     private Component parseText(String text) {
-        String translated = ChatColor.translateAlternateColorCodes('&', text);
-        if (text.contains("<") && text.contains(">")) {
-            return MiniMessage.miniMessage().deserialize(text);
+        if (MINI_TAG.matcher(text).find()) {
+            try {
+                return MiniMessage.miniMessage().deserialize(text);
+            } catch (Exception ignored) {
+                // Fall through to legacy parsing on malformed MiniMessage input.
+            }
         }
-        return LegacyComponentSerializer.legacySection().deserialize(translated);
+        return LegacyComponentSerializer.legacySection()
+                .deserialize(ChatColor.translateAlternateColorCodes('&', text));
     }
 
     private void saveItem(Player player, ItemStack item, ItemMeta meta) {
@@ -520,21 +530,24 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 msg(player, "ability_not_exist", "%ability%", abilityId);
                 return;
             }
-            if (current.contains(abilityId)) {
+            String canonicalId = ability.getId().toLowerCase();
+            if (current.contains(canonicalId)) {
                 msg(player, "ability_already_has");
                 return;
             }
-            current.add(abilityId);
+            current.add(canonicalId);
             plugin.getAbilityManager().setItemAbilities(item, current);
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
             msg(player, "ability_add_success", "%ability%", ability.getName());
         } else if (operation.equalsIgnoreCase("remove")) {
-            if (!current.contains(abilityId)) {
+            Ability ability = plugin.getAbilityManager().getAbility(abilityId);
+            String targetId = ability != null ? ability.getId().toLowerCase() : abilityId;
+            if (!current.contains(targetId)) {
                 msg(player, "ability_not_has");
                 return;
             }
-            current.remove(abilityId);
+            current.remove(targetId);
             plugin.getAbilityManager().setItemAbilities(item, current);
             player.getInventory().setItemInMainHand(item);
             player.updateInventory();
@@ -561,8 +574,9 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        String canonicalId = ability.getId().toLowerCase();
         List<String> itemAbilities = plugin.getAbilityManager().getItemAbilities(item);
-        if (!itemAbilities.contains(abilityId)) {
+        if (!itemAbilities.contains(canonicalId)) {
             player.sendMessage("§cWarning: The item does not currently have this ability bound, but parameter will be set.");
         }
 
@@ -678,7 +692,13 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 case "ability":
                     return filter(Arrays.asList("add", "remove", "clear", "list"), args[1]);
                 case "custom":
-                    return filter(plugin.getAbilityManager().getRegisteredAbilities().stream().map(Ability::getId).collect(Collectors.toList()), args[1]);
+                    List<String> customSugg = new ArrayList<>();
+                    for (Ability ability : plugin.getAbilityManager().getRegisteredAbilities()) {
+                        customSugg.add(ability.getId());
+                        customSugg.add(ability.getClass().getSimpleName());
+                    }
+                    customSugg.add("gojo");
+                    return filter(customSugg, args[1]);
                 case "give":
                     List<String> suggestions = new ArrayList<>();
                     for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
@@ -716,10 +736,33 @@ public class ItemEditCommand implements CommandExecutor, TabCompleter {
                 }
             } else if (sub.equalsIgnoreCase("ability")) {
                 if (op.equalsIgnoreCase("add") || op.equalsIgnoreCase("remove")) {
-                    return filter(plugin.getAbilityManager().getRegisteredAbilities().stream().map(Ability::getId).collect(Collectors.toList()), args[2]);
+                    List<String> suggestions = new ArrayList<>();
+                    for (Ability ability : plugin.getAbilityManager().getRegisteredAbilities()) {
+                        suggestions.add(ability.getId());
+                        suggestions.add(ability.getClass().getSimpleName());
+                    }
+                    suggestions.add("gojo");
+                    return filter(suggestions, args[2]);
                 }
             } else if (sub.equalsIgnoreCase("custom")) {
-                return filter(Arrays.asList("cooldown", "damage", "radius", "duration", "fire_ticks", "health_heal", "hunger_heal"), args[2]);
+                String abilityId = args[1].toLowerCase();
+                Ability ability = plugin.getAbilityManager().getAbility(abilityId);
+                List<String> suggestions = new ArrayList<>();
+                suggestions.addAll(Arrays.asList("cooldown", "damage", "radius", "duration", "fire_ticks", "health_heal", "hunger_heal"));
+                if (ability != null) {
+                    String canonicalId = ability.getId().toLowerCase();
+                    for (org.bukkit.configuration.file.FileConfiguration cfg : plugin.getAbilityConfigManager().getConfigs().values()) {
+                        String path = "abilities." + canonicalId;
+                        if (cfg.contains(path) && cfg.isConfigurationSection(path)) {
+                            org.bukkit.configuration.ConfigurationSection sec = cfg.getConfigurationSection(path);
+                            if (sec != null) {
+                                suggestions.addAll(sec.getKeys(false));
+                            }
+                        }
+                    }
+                }
+                suggestions = suggestions.stream().distinct().collect(Collectors.toList());
+                return filter(suggestions, args[2]);
             } else if (sub.equalsIgnoreCase("give")) {
                 List<String> suggestions = new ArrayList<>();
                 org.bukkit.configuration.file.FileConfiguration weaponCfg = plugin.getWeaponConfigManager().getConfig();

@@ -31,6 +31,12 @@ public class ItemEditGui implements Listener {
     private final Map<UUID, ChatPromptType> chatPrompts = new HashMap<>();
     private final Map<UUID, Integer> activeLoreLines = new HashMap<>();
     private final Map<UUID, ParamEditData> activeParamEdits = new HashMap<>();
+    private final Map<UUID, Integer> abilityMenuPage = new HashMap<>();
+
+    private static final int ABILITIES_PER_PAGE = 45;
+    private static final int SLOT_PREV = 45;
+    private static final int SLOT_BACK = 49;
+    private static final int SLOT_NEXT = 53;
 
     public enum ChatPromptType {
         RENAME,
@@ -133,18 +139,45 @@ public class ItemEditGui implements Listener {
     }
 
     public void openAbilitiesMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, "§0Item Edit - Abilities");
+        openAbilitiesMenu(player, abilityMenuPage.getOrDefault(player.getUniqueId(), 0));
+    }
+
+    public void openAbilitiesMenu(Player player, int page) {
+        List<Ability> abilities = new ArrayList<>(plugin.getAbilityManager().getRegisteredAbilities());
+        int maxPage = Math.max(0, (abilities.size() - 1) / ABILITIES_PER_PAGE);
+        page = Math.max(0, Math.min(page, maxPage));
+        abilityMenuPage.put(player.getUniqueId(), page);
+
+        Inventory inv = Bukkit.createInventory(null, 54, "§0Item Edit - Abilities");
         ItemStack pane = createGuiItem(Material.GRAY_STAINED_GLASS_PANE, " ");
-        for (int i = 0; i < 27; i++) {
+        for (int i = ABILITIES_PER_PAGE; i < 54; i++) {
             inv.setItem(i, pane);
         }
 
-        int slot = 10;
-        for (Ability ability : plugin.getAbilityManager().getRegisteredAbilities()) {
-            inv.setItem(slot++, createGuiItem(Material.FIREWORK_STAR, "§6" + ability.getName(), "§7ID: " + ability.getId()));
+        List<String> current = plugin.getAbilityManager().getItemAbilities(player.getInventory().getItemInMainHand());
+        int start = page * ABILITIES_PER_PAGE;
+        for (int i = 0; i < ABILITIES_PER_PAGE; i++) {
+            int idx = start + i;
+            if (idx >= abilities.size()) {
+                break;
+            }
+            Ability ability = abilities.get(idx);
+            boolean has = current.contains(ability.getId().toLowerCase());
+            String prefix = has ? "§a✔ " : "§6";
+            inv.setItem(i, createGuiItem(
+                    has ? Material.LIME_DYE : Material.FIREWORK_STAR,
+                    prefix + ability.getName(),
+                    "§7ID: " + ability.getId(),
+                    has ? "§eClick to remove" : "§eClick to add"));
         }
 
-        inv.setItem(22, createGuiItem(Material.BARRIER, "§cBack to Menu"));
+        if (page > 0) {
+            inv.setItem(SLOT_PREV, createGuiItem(Material.ARROW, "§ePrevious Page"));
+        }
+        inv.setItem(SLOT_BACK, createGuiItem(Material.BARRIER, "§cBack to Menu"));
+        if (page < maxPage) {
+            inv.setItem(SLOT_NEXT, createGuiItem(Material.ARROW, "§eNext Page", "§7Page " + (page + 1) + "/" + (maxPage + 1)));
+        }
         player.openInventory(inv);
     }
 
@@ -163,6 +196,9 @@ public class ItemEditGui implements Listener {
         } else {
             int slot = 10;
             for (String abilityId : currentAbilities) {
+                if (slot >= 17) {
+                    break; // keep the back button slot (22) and inventory bounds safe
+                }
                 Ability ability = plugin.getAbilityManager().getAbility(abilityId);
                 if (ability != null) {
                     inv.setItem(slot++, createGuiItem(Material.COMPASS, "§e§l" + ability.getName(), "§7Click to customize parameter", "§7cooldown or duration/damage."));
@@ -328,27 +364,46 @@ public class ItemEditGui implements Listener {
                     saveItem(player, held, meta);
                 }
         } else if (title.equals("§0Item Edit - Abilities")) {
-            if (slot == 22) {
+            int page = abilityMenuPage.getOrDefault(player.getUniqueId(), 0);
+            if (slot == SLOT_BACK) {
                 openMainMenu(player);
+                return;
+            }
+            if (slot == SLOT_PREV) {
+                openAbilitiesMenu(player, page - 1);
+                return;
+            }
+            if (slot == SLOT_NEXT) {
+                openAbilitiesMenu(player, page + 1);
+                return;
+            }
+            if (slot < 0 || slot >= ABILITIES_PER_PAGE) {
                 return;
             }
             ItemStack clicked = event.getCurrentItem();
             if (clicked != null && clicked.hasItemMeta()) {
                 List<Component> lore = clicked.getItemMeta().lore();
                 if (lore != null && !lore.isEmpty()) {
-                    String line = LegacyComponentSerializer.legacySection().serialize(lore.get(0));
+                    // Strip color codes so the "§7ID: <id>" prefix doesn't corrupt the parsed id.
+                    String line = ChatColor.stripColor(LegacyComponentSerializer.legacySection().serialize(lore.get(0)));
                     String id = line.replace("ID: ", "").trim().toLowerCase();
+                    Ability ability = plugin.getAbilityManager().getAbility(id);
+                    if (ability == null) {
+                        return;
+                    }
+                    String canonicalId = ability.getId().toLowerCase();
                     List<String> current = new ArrayList<>(plugin.getAbilityManager().getItemAbilities(held));
-                    if (current.contains(id)) {
-                        current.remove(id);
-                        player.sendMessage("§cRemoved ability " + id);
+                    if (current.contains(canonicalId)) {
+                        current.remove(canonicalId);
+                        player.sendMessage("§cRemoved ability " + ability.getName());
                     } else {
-                        current.add(id);
-                        player.sendMessage("§aAdded ability " + id);
+                        current.add(canonicalId);
+                        player.sendMessage("§aAdded ability " + ability.getName());
                     }
                     plugin.getAbilityManager().setItemAbilities(held, current);
                     player.getInventory().setItemInMainHand(held);
                     player.updateInventory();
+                    openAbilitiesMenu(player, page);
                 }
             }
         } else if (title.equals("§0Item Edit - Customize Parameters")) {
@@ -402,12 +457,7 @@ public class ItemEditGui implements Listener {
 
             ItemMeta meta = held.getItemMeta();
             if (prompt == ChatPromptType.RENAME) {
-                String translated = ChatColor.translateAlternateColorCodes('&', message);
-                if (message.contains("<") && message.contains(">")) {
-                    meta.displayName(MiniMessage.miniMessage().deserialize(message));
-                } else {
-                    meta.displayName(LegacyComponentSerializer.legacySection().deserialize(translated));
-                }
+                meta.displayName(parseText(message));
                 saveItem(player, held, meta);
                 player.sendMessage("§aItem renamed!");
             } else if (prompt == ChatPromptType.ADD_LORE) {
@@ -415,17 +465,38 @@ public class ItemEditGui implements Listener {
                 if (lore == null) {
                     lore = new ArrayList<>();
                 }
-                String translated = ChatColor.translateAlternateColorCodes('&', message);
-                if (message.contains("<") && message.contains(">")) {
-                    lore.add(MiniMessage.miniMessage().deserialize(message));
-                } else {
-                    lore.add(LegacyComponentSerializer.legacySection().deserialize(translated));
-                }
+                lore.add(parseText(message));
                 meta.lore(lore);
                 saveItem(player, held, meta);
                 player.sendMessage("§aLore added!");
             }
             openMainMenu(player);
         });
+    }
+
+    // Detects a MiniMessage-style tag such as <red>, </bold>, <#ffAA00> without matching
+    // stray comparison text like "a < b > c" or "<3".
+    private static final java.util.regex.Pattern MINI_TAG =
+            java.util.regex.Pattern.compile("</?[a-zA-Z#][^<>]*>");
+
+    private Component parseText(String text) {
+        if (MINI_TAG.matcher(text).find()) {
+            try {
+                return MiniMessage.miniMessage().deserialize(text);
+            } catch (Exception ignored) {
+                // Fall through to legacy parsing on malformed MiniMessage input.
+            }
+        }
+        return LegacyComponentSerializer.legacySection()
+                .deserialize(ChatColor.translateAlternateColorCodes('&', text));
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        chatPrompts.remove(id);
+        activeLoreLines.remove(id);
+        activeParamEdits.remove(id);
+        abilityMenuPage.remove(id);
     }
 }

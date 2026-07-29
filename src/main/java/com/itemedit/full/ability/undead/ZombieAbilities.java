@@ -2,6 +2,8 @@ package com.itemedit.full.ability.undead;
 
 import com.itemedit.full.ItemEditFull;
 import com.itemedit.full.ability.Ability;
+import com.itemedit.full.utils.EffectUtils;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -26,8 +28,8 @@ import org.bukkit.util.Vector;
 import java.util.*;
 
 public class ZombieAbilities implements Listener {
-    private static final Map<UUID, Long> activeRages = new HashMap<>();
-    private static final Map<UUID, Long> infectedEntities = new HashMap<>();
+    private static final Map<UUID, Long> activeRages = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Long> infectedEntities = new java.util.concurrent.ConcurrentHashMap<>();
     private static ItemEditFull pluginInstance;
 
     public static void register(ItemEditFull plugin) {
@@ -39,6 +41,12 @@ public class ZombieAbilities implements Listener {
         plugin.getAbilityManager().registerAbility(new UndeadCall(plugin));
         
         plugin.getServer().getPluginManager().registerEvents(new ZombieAbilities(), plugin);
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        // activeRages is player-keyed; infectedEntities is mob-keyed and expires on its own.
+        activeRages.remove(event.getPlayer().getUniqueId());
     }
 
     public static void registerRage(UUID uuid, long expireTime) {
@@ -69,15 +77,24 @@ public class ZombieAbilities implements Listener {
             Player player = (Player) event.getDamager();
             Long expire = activeRages.get(player.getUniqueId());
             if (expire != null && System.currentTimeMillis() < expire) {
-                event.setDamage(event.getDamage() * 2.0);
-                player.getWorld().spawnParticle(Particle.CRIT, event.getEntity().getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.1);
+                ItemStack hand = player.getInventory().getItemInMainHand();
+                Ability ab = pluginInstance.getAbilityManager().getAbility("zombie_rage");
+                double multiplier = ab != null ? ab.getDoubleParam(hand, "damage_multiplier", 2.0) : 2.0;
+                event.setDamage(event.getDamage() * multiplier);
+                Location rageHitLoc = event.getEntity().getLocation().add(0, 1, 0);
+                EffectUtils.burst(rageHitLoc,
+                        new EffectUtils.Layer(Particle.CRIT, 10, 0.2, 0.2, 0.2, 0.1),
+                        new EffectUtils.Layer(Particle.VILLAGER_ANGRY, 6, 0.2, 0.2, 0.2, 0));
             }
         }
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
             Long expire = activeRages.get(player.getUniqueId());
             if (expire != null && System.currentTimeMillis() < expire) {
-                event.setDamage(event.getDamage() * 1.5);
+                ItemStack hand = player.getInventory().getItemInMainHand();
+                Ability ab = pluginInstance.getAbilityManager().getAbility("zombie_rage");
+                double incomingMultiplier = ab != null ? ab.getDoubleParam(hand, "incoming_damage_multiplier", 1.5) : 1.5;
+                event.setDamage(event.getDamage() * incomingMultiplier);
             }
         }
     }
@@ -89,11 +106,19 @@ public class ZombieAbilities implements Listener {
         if (expire != null && System.currentTimeMillis() < expire) {
             infectedEntities.remove(victim.getUniqueId());
             Location loc = victim.getLocation();
-            loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc, 15, 0.3, 0.5, 0.3, 0.05);
-            loc.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 0.8f);
+            EffectUtils.fanfare(loc, new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 0.8f),
+                    new EffectUtils.SoundLayer(Sound.BLOCK_SOUL_SAND_BREAK, 0.9f, 0.7f));
+            EffectUtils.burst(loc,
+                    new EffectUtils.Layer(Particle.SOUL_FIRE_FLAME, 15, 0.3, 0.5, 0.3, 0.05),
+                    new EffectUtils.Layer(Particle.SOUL, 12, 0.3, 0.5, 0.3, 0.02));
+            EffectUtils.ring(loc.clone().add(0, 0.1, 0), 1.0, 10, new EffectUtils.Layer(Particle.SOUL, 1, 0, 0.2, 0, 0));
 
             Zombie zombie = (Zombie) loc.getWorld().spawnEntity(loc, EntityType.ZOMBIE);
-            zombie.getEquipment().setHelmet(new ItemStack(Material.LEATHER_HELMET));
+            Ability ab = pluginInstance.getAbilityManager().getAbility("zombie_infection");
+            String helmetMatStr = ab != null ? ab.getStringParam(null, "helmet_material", "LEATHER_HELMET") : "LEATHER_HELMET";
+            Material helmetMat = Material.matchMaterial(helmetMatStr);
+            if (helmetMat == null) helmetMat = Material.LEATHER_HELMET;
+            zombie.getEquipment().setHelmet(new ItemStack(helmetMat));
             if (pluginInstance != null) {
                 zombie.setMetadata("helper", new FixedMetadataValue(pluginInstance, "true"));
             }
@@ -113,18 +138,24 @@ class ZombieSwarm extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
         int zombiesCount = getIntParam(plugin, item, "zombies", 2);
+        int speedAmp = getIntParam(plugin, item, "speed_amplifier", 1);
+        String helmetMatStr = getStringParam(plugin, item, "helmet_material", "LEATHER_HELMET");
+        Material helmetMat = Material.matchMaterial(helmetMatStr);
+        if (helmetMat == null) helmetMat = Material.LEATHER_HELMET;
 
         Location loc = player.getLocation();
-        player.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_AMBIENT, 1.0f, 0.8f);
+        EffectUtils.fanfare(loc, new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_AMBIENT, 1.0f, 0.8f));
+        EffectUtils.ring(loc.clone().add(0, 0.1, 0), 1.5, 14,
+                new EffectUtils.Layer(Particle.DUST, 1, 0, 0.1, 0, 0, new Particle.DustOptions(Color.fromRGB(90, 110, 60), 1.0f)));
 
         List<Zombie> summoned = new ArrayList<>();
         for (int i = 0; i < zombiesCount; i++) {
             double angle = i * 2 * Math.PI / zombiesCount;
             Location spawnLoc = loc.clone().add(Math.cos(angle) * 1.5, 0, Math.sin(angle) * 1.5);
             Zombie zombie = (Zombie) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.ZOMBIE);
-            zombie.getEquipment().setHelmet(new ItemStack(Material.LEATHER_HELMET));
+            zombie.getEquipment().setHelmet(new ItemStack(helmetMat));
             zombie.setMetadata("helper", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
-            zombie.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, (int) (duration * 20), 1));
+            zombie.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, (int) (duration * 20), speedAmp));
             
             for (Entity entity : zombie.getNearbyEntities(10.0, 5.0, 10.0)) {
                 if (entity instanceof LivingEntity && !(entity instanceof Player) && !entity.hasMetadata("helper")) {
@@ -140,7 +171,9 @@ class ZombieSwarm extends Ability {
             public void run() {
                 for (Zombie z : summoned) {
                     if (z.isValid()) {
-                        z.getWorld().spawnParticle(Particle.SMOKE_NORMAL, z.getLocation().add(0, 1, 0), 10, 0.2, 0.3, 0.2, 0.01);
+                        EffectUtils.burst(z.getLocation().add(0, 1, 0),
+                                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 10, 0.2, 0.3, 0.2, 0.01),
+                                new EffectUtils.Layer(Particle.VILLAGER_ANGRY, 6, 0.2, 0.3, 0.2, 0));
                         z.remove();
                     }
                 }
@@ -163,6 +196,8 @@ class UndeadBite extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double damage = getDoubleParam(plugin, item, "damage", 4.0);
         int hungerHeal = getIntParam(plugin, item, "hunger_heal", 4);
+        double hungerDuration = getDoubleParam(plugin, item, "hunger_duration", 5.0);
+        int hungerAmp = getIntParam(plugin, item, "hunger_amplifier", 1);
 
         Entity target = player.getTargetEntity(5);
         if (!(target instanceof LivingEntity)) {
@@ -172,13 +207,17 @@ class UndeadBite extends Ability {
 
         LivingEntity living = (LivingEntity) target;
         living.damage(damage, player);
-        living.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, 100, 1));
+        living.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, (int) (hungerDuration * 20), hungerAmp));
         
         player.setFoodLevel(Math.min(20, player.getFoodLevel() + hungerHeal));
         player.setSaturation(Math.min(20.0f, player.getSaturation() + hungerHeal));
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1.0f, 0.8f);
-        player.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, living.getLocation().add(0, 1, 0), 5, 0.1, 0.1, 0.1, 0.02);
-        
+        Location biteLoc = living.getLocation().add(0, 1, 0);
+        EffectUtils.fanfare(biteLoc, new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, 0.9f, 1.1f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_PLAYER_BURP, 1.0f, 0.8f));
+        EffectUtils.burst(biteLoc,
+                new EffectUtils.Layer(Particle.DAMAGE_INDICATOR, 5, 0.1, 0.1, 0.1, 0.02),
+                new EffectUtils.Layer(Particle.VILLAGER_ANGRY, 8, 0.2, 0.2, 0.2, 0));
+
         return true;
     }
 }
@@ -194,6 +233,7 @@ class ZombieInfection extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
+        int witherAmp = getIntParam(plugin, item, "wither_amplifier", 0);
 
         Entity target = player.getTargetEntity(6);
         if (!(target instanceof LivingEntity)) {
@@ -202,8 +242,10 @@ class ZombieInfection extends Ability {
         }
 
         LivingEntity living = (LivingEntity) target;
-        living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (duration * 20), 0));
-        living.getWorld().playSound(living.getLocation(), Sound.ENTITY_ZOMBIE_INFECT, 1.0f, 1.1f);
+        living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (duration * 20), witherAmp));
+        Location infectLoc = living.getLocation().add(0, 1, 0);
+        EffectUtils.fanfare(infectLoc, new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_INFECT, 1.0f, 1.1f));
+        EffectUtils.burst(infectLoc, new EffectUtils.Layer(Particle.SPELL_MOB, 10, 0.2, 0.3, 0.2, 0));
         ZombieAbilities.registerInfected(living.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
 
         new CompatRunnable() {
@@ -215,6 +257,7 @@ class ZombieInfection extends Ability {
                     return;
                 }
                 living.getWorld().spawnParticle(Particle.SPELL_MOB, living.getLocation().add(0, 1, 0), 8, 0.2, 0.3, 0.2, 0);
+                living.getWorld().spawnParticle(Particle.VILLAGER_ANGRY, living.getLocation().add(0, 1, 0), 2, 0.2, 0.2, 0.2, 0);
                 count++;
             }
         }.runTaskTimer(plugin, living, 0L, 20L);
@@ -235,7 +278,12 @@ class ZombieRage extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 6.0);
 
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_HURT, 1.0f, 0.7f);
+        Location rageLoc = player.getLocation().add(0, 1, 0);
+        EffectUtils.fanfare(rageLoc, new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_VILLAGER_HURT, 1.0f, 0.7f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ZOMBIE_AMBIENT, 0.8f, 0.6f));
+        EffectUtils.burst(rageLoc,
+                new EffectUtils.Layer(Particle.VILLAGER_ANGRY, 10, 0.3, 0.3, 0.3, 0),
+                new EffectUtils.Layer(Particle.CRIT, 8, 0.3, 0.3, 0.3, 0.05));
         ZombieAbilities.registerRage(player.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
 
         new CompatRunnable() {
@@ -247,6 +295,8 @@ class ZombieRage extends Ability {
                     return;
                 }
                 player.getWorld().spawnParticle(Particle.VILLAGER_ANGRY, player.getLocation().add(0, 1.5, 0), 3, 0.2, 0.2, 0.2, 0);
+                player.getWorld().spawnParticle(Particle.DUST, player.getLocation().add(0, 1.5, 0), 2, 0.2, 0.2, 0.2, 0,
+                        new Particle.DustOptions(Color.fromRGB(150, 30, 30), 1.0f));
                 ticks++;
             }
         }.runTaskTimer(plugin, player, 0L, 20L);
@@ -266,6 +316,7 @@ class UndeadCall extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double range = getDoubleParam(plugin, item, "range", 20.0);
+        double pullVelocity = getDoubleParam(plugin, item, "pull_velocity", 1.5);
 
         Location loc = player.getLocation();
         player.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_CONVERTED_TO_DROWNED, 1.2f, 0.7f);
@@ -274,8 +325,8 @@ class UndeadCall extends Ability {
         for (Entity entity : player.getWorld().getNearbyEntities(loc, range, 10.0, range)) {
             if (entity instanceof Zombie && !entity.hasMetadata("helper")) {
                 Zombie zombie = (Zombie) entity;
-                Vector dir = loc.toVector().subtract(zombie.getLocation().toVector()).normalize();
-                zombie.setVelocity(dir.multiply(1.5).setY(0.4));
+                Vector dir = com.itemedit.full.utils.VectorUtils.safeNormalize(loc.toVector().subtract(zombie.getLocation().toVector()));
+                zombie.setVelocity(dir.multiply(pullVelocity).setY(0.4));
                 zombie.getWorld().spawnParticle(Particle.PORTAL, zombie.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.05);
                 zombie.setTarget(player);
                 count++;

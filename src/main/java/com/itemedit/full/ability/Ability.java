@@ -40,10 +40,19 @@ public abstract class Ability {
             ItemMeta meta = item.getItemMeta();
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
             
-            // 1. Check PDC custom override
+            // 1. Check PDC custom override (accept any numeric type it may have been stored as)
             NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
             if (pdc.has(key, org.bukkit.persistence.PersistentDataType.DOUBLE)) {
                 return pdc.get(key, org.bukkit.persistence.PersistentDataType.DOUBLE);
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.INTEGER);
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.FLOAT)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.FLOAT);
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.LONG)) {
+                return pdc.get(key, org.bukkit.persistence.PersistentDataType.LONG);
             }
             
             // 2. Check weapon.yml configuration
@@ -59,7 +68,12 @@ public abstract class Ability {
                 }
             }
         }
-        // 3. Fallback to standard config.yml
+        // 3. Check categorized config files
+        Object customVal = plugin.getAbilityConfigManager().getParam(id, param);
+        if (customVal instanceof Number) {
+            return ((Number) customVal).doubleValue();
+        }
+        // 4. Fallback to standard config.yml
         return plugin.getConfig().getDouble("abilities." + id + "." + param, defaultValue);
     }
 
@@ -68,10 +82,19 @@ public abstract class Ability {
             ItemMeta meta = item.getItemMeta();
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
             
-            // 1. Check PDC custom override
+            // 1. Check PDC custom override (accept any numeric type it may have been stored as)
             NamespacedKey key = new NamespacedKey(plugin, "ability_param_" + id + "_" + param);
             if (pdc.has(key, org.bukkit.persistence.PersistentDataType.INTEGER)) {
                 return pdc.get(key, org.bukkit.persistence.PersistentDataType.INTEGER);
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.DOUBLE)) {
+                return (int) Math.round(pdc.get(key, org.bukkit.persistence.PersistentDataType.DOUBLE));
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.FLOAT)) {
+                return Math.round(pdc.get(key, org.bukkit.persistence.PersistentDataType.FLOAT));
+            }
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.LONG)) {
+                return (int) (long) pdc.get(key, org.bukkit.persistence.PersistentDataType.LONG);
             }
             
             // 2. Check weapon.yml configuration
@@ -87,7 +110,12 @@ public abstract class Ability {
                 }
             }
         }
-        // 3. Fallback to standard config.yml
+        // 3. Check categorized config files
+        Object customVal = plugin.getAbilityConfigManager().getParam(id, param);
+        if (customVal instanceof Number) {
+            return ((Number) customVal).intValue();
+        }
+        // 4. Fallback to standard config.yml
         return plugin.getConfig().getInt("abilities." + id + "." + param, defaultValue);
     }
 
@@ -116,7 +144,12 @@ public abstract class Ability {
                 }
             }
         }
-        // 3. Fallback to standard config.yml
+        // 3. Check categorized config files
+        Object customVal = plugin.getAbilityConfigManager().getParam(id, param);
+        if (customVal instanceof Boolean) {
+            return (Boolean) customVal;
+        }
+        // 4. Fallback to standard config.yml
         return plugin.getConfig().getBoolean("abilities." + id + "." + param, defaultValue);
     }
 
@@ -144,8 +177,26 @@ public abstract class Ability {
                 }
             }
         }
-        // 3. Fallback to standard config.yml
+        // 3. Check categorized config files
+        Object customVal = plugin.getAbilityConfigManager().getParam(id, param);
+        if (customVal != null) {
+            return customVal.toString();
+        }
+        // 4. Fallback to standard config.yml
         return plugin.getConfig().getString("abilities." + id + "." + param, defaultValue);
+    }
+
+    public double getDoubleParam(ItemStack item, String param, double defaultValue) {
+        return getDoubleParam(org.bukkit.plugin.java.JavaPlugin.getPlugin(com.itemedit.full.ItemEditFull.class), item, param, defaultValue);
+    }
+    public int getIntParam(ItemStack item, String param, int defaultValue) {
+        return getIntParam(org.bukkit.plugin.java.JavaPlugin.getPlugin(com.itemedit.full.ItemEditFull.class), item, param, defaultValue);
+    }
+    public boolean getBooleanParam(ItemStack item, String param, boolean defaultValue) {
+        return getBooleanParam(org.bukkit.plugin.java.JavaPlugin.getPlugin(com.itemedit.full.ItemEditFull.class), item, param, defaultValue);
+    }
+    public String getStringParam(ItemStack item, String param, String defaultValue) {
+        return getStringParam(org.bukkit.plugin.java.JavaPlugin.getPlugin(com.itemedit.full.ItemEditFull.class), item, param, defaultValue);
     }
 
     public void setCustomParam(ItemEditFull plugin, ItemStack item, String param, double value) {

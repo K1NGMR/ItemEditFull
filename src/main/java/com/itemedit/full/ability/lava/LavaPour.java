@@ -2,12 +2,15 @@ package com.itemedit.full.ability.lava;
 
 import com.itemedit.full.ItemEditFull;
 import com.itemedit.full.ability.Ability;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import com.itemedit.full.utils.CompatRunnable;
+import com.itemedit.full.utils.EffectUtils;
 
 public class LavaPour extends Ability {
     private final ItemEditFull plugin;
@@ -35,14 +38,28 @@ public class LavaPour extends Ability {
 
         Material originalMaterial = lavaBlock.getType();
         lavaBlock.setType(Material.LAVA);
-        lavaBlock.getWorld().playSound(lavaBlock.getLocation(), Sound.ITEM_BUCKET_EMPTY_LAVA, 1.0f, 1.0f);
+
+        Location pourLoc = lavaBlock.getLocation().add(0.5, 0.3, 0.5);
+        EffectUtils.burst(pourLoc,
+                new EffectUtils.Layer(Particle.LAVA, 10, 0.3, 0.2, 0.3, 0.04),
+                new EffectUtils.Layer(Particle.FLAME, 14, 0.35, 0.25, 0.35, 0.03),
+                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 10, 0.3, 0.3, 0.3, 0.02));
+        EffectUtils.fanfare(pourLoc,
+                new EffectUtils.SoundLayer(Sound.ITEM_BUCKET_EMPTY_LAVA, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_LAVA_POP, 1.0f, 1.1f));
 
         new CompatRunnable() {
             @Override
             public void run() {
                 if (lavaBlock.getType() == Material.LAVA) {
                     lavaBlock.setType(originalMaterial);
-                    lavaBlock.getWorld().playSound(lavaBlock.getLocation(), Sound.ITEM_BUCKET_FILL_LAVA, 1.0f, 1.0f);
+                    Location coolLoc = lavaBlock.getLocation().add(0.5, 0.3, 0.5);
+                    EffectUtils.burst(coolLoc,
+                            new EffectUtils.Layer(Particle.SMOKE_NORMAL, 16, 0.3, 0.3, 0.3, 0.03),
+                            new EffectUtils.Layer(Particle.CLOUD, 10, 0.3, 0.2, 0.3, 0.02));
+                    EffectUtils.fanfare(coolLoc,
+                            new EffectUtils.SoundLayer(Sound.ITEM_BUCKET_FILL_LAVA, 1.0f, 1.0f),
+                            new EffectUtils.SoundLayer(Sound.BLOCK_FIRE_EXTINGUISH, 0.8f, 1.3f));
                 }
             }
         }.runTaskLater(plugin, lavaBlock.getLocation(), (long) (duration * 20));

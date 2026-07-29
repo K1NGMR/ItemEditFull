@@ -18,6 +18,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import com.itemedit.full.utils.CompatRunnable;
+import com.itemedit.full.utils.EffectUtils;
 import org.bukkit.util.Vector;
 
 import java.util.Collection;
@@ -44,11 +45,12 @@ public class EndAbilities implements org.bukkit.event.Listener {
             ShulkerBullet bullet = (ShulkerBullet) event.getEntity();
             if (bullet.hasMetadata("levitate_duration")) {
                 double dur = bullet.getMetadata("levitate_duration").get(0).asDouble();
+                int amp = bullet.hasMetadata("levitate_amplifier") ? bullet.getMetadata("levitate_amplifier").get(0).asInt() : 0;
                 LivingEntity hit = (LivingEntity) event.getHitEntity();
                 new CompatRunnable() {
                     @Override
                     public void run() {
-                        hit.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, (int) (dur * 20), 0), true);
+                        hit.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, (int) (dur * 20), amp), true);
                     }
                 }.runTaskLater(pluginInstance, hit, 1L);
             }
@@ -92,13 +94,21 @@ class EnderBlink extends Ability {
             target = check;
         }
 
-        player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.1);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-        
+        Location departure = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(departure,
+                new EffectUtils.Layer(Particle.PORTAL, 25, 0.3, 0.5, 0.3, 0.6),
+                new EffectUtils.Layer(Particle.REVERSE_PORTAL, 12, 0.3, 0.5, 0.3, 0.02));
+        EffectUtils.fanfare(departure,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_AMBIENT, 0.4f, 1.6f));
+
         player.teleport(target.setDirection(loc.getDirection()));
-        
-        player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.1);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
+
+        Location arrival = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(arrival,
+                new EffectUtils.Layer(Particle.PORTAL, 25, 0.3, 0.5, 0.3, 0.6),
+                new EffectUtils.Layer(Particle.END_ROD, 6, 0.2, 0.3, 0.2, 0.02));
+        EffectUtils.fanfare(arrival, new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f));
         return true;
     }
 }
@@ -113,20 +123,30 @@ class PearlStorm extends Ability {
 
     @Override
     public boolean trigger(Player player, ItemStack item) {
+        double velocity = getDoubleParam(plugin, item, "velocity", 1.5);
+        double angle = getDoubleParam(plugin, item, "angle", 12.0);
+
         Vector dir = player.getEyeLocation().getDirection().normalize();
-        Vector left = EndAbilities.rotateY(dir, -12);
-        Vector right = EndAbilities.rotateY(dir, 12);
+        Vector left = EndAbilities.rotateY(dir, -angle);
+        Vector right = EndAbilities.rotateY(dir, angle);
+
+        Location origin = player.getEyeLocation();
+        EffectUtils.burst(origin,
+                new EffectUtils.Layer(Particle.DRAGON_BREATH, 18, 0.2, 0.2, 0.2, 0.01),
+                new EffectUtils.Layer(Particle.END_ROD, 10, 0.15, 0.15, 0.15, 0.05));
 
         EnderPearl p1 = player.launchProjectile(EnderPearl.class);
-        p1.setVelocity(dir.multiply(1.5));
-        
-        EnderPearl p2 = player.launchProjectile(EnderPearl.class);
-        p2.setVelocity(left.multiply(1.5));
-        
-        EnderPearl p3 = player.launchProjectile(EnderPearl.class);
-        p3.setVelocity(right.multiply(1.5));
+        p1.setVelocity(dir.multiply(velocity));
 
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_PEARL_THROW, 1.0f, 0.8f);
+        EnderPearl p2 = player.launchProjectile(EnderPearl.class);
+        p2.setVelocity(left.multiply(velocity));
+
+        EnderPearl p3 = player.launchProjectile(EnderPearl.class);
+        p3.setVelocity(right.multiply(velocity));
+
+        EffectUtils.fanfare(origin,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_PEARL_THROW, 1.0f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_EYE_LAUNCH, 0.6f, 1.3f));
         return true;
     }
 }
@@ -153,14 +173,20 @@ class EnderSwap extends Ability {
         Location pLoc = player.getLocation();
         Location tLoc = living.getLocation();
 
-        player.getWorld().spawnParticle(Particle.PORTAL, pLoc.add(0, 1, 0), 15, 0.2, 0.5, 0.2, 0.05);
-        tLoc.getWorld().spawnParticle(Particle.PORTAL, tLoc.add(0, 1, 0), 15, 0.2, 0.5, 0.2, 0.05);
+        Location pMarker = pLoc.add(0, 1, 0);
+        Location tMarker = tLoc.add(0, 1, 0);
+        EffectUtils.burst(pMarker,
+                new EffectUtils.Layer(Particle.REVERSE_PORTAL, 20, 0.25, 0.5, 0.25, 0.1),
+                new EffectUtils.Layer(Particle.PORTAL, 10, 0.25, 0.5, 0.25, 0.05));
+        EffectUtils.burst(tMarker,
+                new EffectUtils.Layer(Particle.REVERSE_PORTAL, 20, 0.25, 0.5, 0.25, 0.1),
+                new EffectUtils.Layer(Particle.PORTAL, 10, 0.25, 0.5, 0.25, 0.05));
 
         player.teleport(living.getLocation().setDirection(player.getLocation().getDirection()));
         living.teleport(pLoc.setDirection(living.getLocation().getDirection()));
 
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
-        living.getWorld().playSound(living.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f);
+        EffectUtils.fanfare(player.getLocation(), new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f));
+        EffectUtils.fanfare(living.getLocation(), new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f));
         return true;
     }
 }
@@ -177,6 +203,8 @@ class EnderRift extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 6.0);
         double duration = getDoubleParam(plugin, item, "duration", 3.0);
+        double pullStrength = getDoubleParam(plugin, item, "pull_strength", 0.4);
+        double yStrength = getDoubleParam(plugin, item, "y_strength", 0.15);
 
         Block target = player.getTargetBlockExact(25);
         if (target == null) {
@@ -185,7 +213,9 @@ class EnderRift extends Ability {
         }
 
         Location riftLoc = target.getLocation().add(0.5, 1.5, 0.5);
-        riftLoc.getWorld().playSound(riftLoc, Sound.BLOCK_PORTAL_TRIGGER, 1.0f, 1.5f);
+        EffectUtils.fanfare(riftLoc,
+                new EffectUtils.SoundLayer(Sound.BLOCK_PORTAL_TRIGGER, 1.0f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_FLAP, 0.4f, 0.6f));
 
         new CompatRunnable() {
             int ticks = 0;
@@ -196,7 +226,9 @@ class EnderRift extends Ability {
                     return;
                 }
 
-                riftLoc.getWorld().spawnParticle(Particle.PORTAL, riftLoc, 15, 0.5, 0.5, 0.5, 0.1);
+                EffectUtils.burst(riftLoc,
+                        new EffectUtils.Layer(Particle.PORTAL, 15, 0.5, 0.5, 0.5, 0.1),
+                        new EffectUtils.Layer(Particle.DRAGON_BREATH, 4, 0.4, 0.4, 0.4, 0.01));
                 riftLoc.getWorld().playSound(riftLoc, Sound.ENTITY_ENDERMAN_AMBIENT, 0.5f, 1.5f);
 
                 for (Entity entity : riftLoc.getWorld().getNearbyEntities(riftLoc, radius, 4.0, radius)) {
@@ -204,7 +236,7 @@ class EnderRift extends Ability {
                         Vector dir = riftLoc.toVector().subtract(entity.getLocation().toVector());
                         double dist = dir.length();
                         if (dist > 0.5) {
-                            entity.setVelocity(dir.normalize().multiply(0.4).setY(0.15));
+                            entity.setVelocity(dir.normalize().multiply(pullStrength).setY(yStrength));
                         }
                     }
                 }
@@ -228,17 +260,27 @@ class EnderShriek extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 8.0);
         double damage = getDoubleParam(plugin, item, "damage", 2.0);
+        double nauseaDuration = getDoubleParam(plugin, item, "nausea_duration", 8.0);
+        int nauseaAmp = getIntParam(plugin, item, "nausea_amplifier", 1);
+        double slowDuration = getDoubleParam(plugin, item, "slow_duration", 5.0);
+        int slowAmp = getIntParam(plugin, item, "slow_amplifier", 2);
 
         Location loc = player.getLocation();
-        player.getWorld().playSound(loc, Sound.ENTITY_ENDERMAN_SCREAM, 1.2f, 0.7f);
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_SCREAM, 1.2f, 0.7f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.6f, 1.6f));
+        EffectUtils.ring(loc.clone().add(0, 1, 0), radius, 24,
+                new EffectUtils.Layer(Particle.REVERSE_PORTAL, 2, 0.05, 0.05, 0.05, 0.02));
 
         for (Entity entity : player.getWorld().getNearbyEntities(loc, radius, 4.0, radius)) {
             if (entity instanceof LivingEntity && !entity.equals(player)) {
                 LivingEntity living = (LivingEntity) entity;
-                living.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 160, 1));
-                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, (int) (nauseaDuration * 20), nauseaAmp));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, (int) (slowDuration * 20), slowAmp));
                 living.damage(damage, player);
-                living.getWorld().spawnParticle(Particle.CHERRY_LEAVES, living.getLocation().add(0, 1.5, 0), 10, 0.2, 0.2, 0.2, 0.05);
+                EffectUtils.burst(living.getLocation().add(0, 1.5, 0),
+                        new EffectUtils.Layer(Particle.DRAGON_BREATH, 8, 0.2, 0.2, 0.2, 0.01),
+                        new EffectUtils.Layer(Particle.PORTAL, 6, 0.2, 0.2, 0.2, 0.05));
             }
         }
         return true;
@@ -256,8 +298,10 @@ class ShulkerLevitate extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 4.0);
+        int levitateAmp = getIntParam(plugin, item, "levitation_amplifier", 0);
+        double range = getDoubleParam(plugin, item, "range", 25.0);
 
-        Entity target = player.getTargetEntity(25);
+        Entity target = player.getTargetEntity((int) range);
         if (!(target instanceof LivingEntity)) {
             player.sendMessage("§cNo target entity in sight.");
             return false;
@@ -268,11 +312,15 @@ class ShulkerLevitate extends Ability {
         bullet.setShooter(player);
         bullet.setTarget(target);
         
-        // Save the duration onto the projectile so that we can apply it on hit!
-        // We can do it by saving metadata
         bullet.setMetadata("levitate_duration", new org.bukkit.metadata.FixedMetadataValue(plugin, duration));
-        
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SHULKER_SHOOT, 1.0f, 1.0f);
+        bullet.setMetadata("levitate_amplifier", new org.bukkit.metadata.FixedMetadataValue(plugin, levitateAmp));
+
+        EffectUtils.burst(eyeLoc,
+                new EffectUtils.Layer(Particle.END_ROD, 12, 0.1, 0.1, 0.1, 0.08),
+                new EffectUtils.Layer(Particle.PORTAL, 8, 0.15, 0.15, 0.15, 0.05));
+        EffectUtils.fanfare(player.getLocation(),
+                new EffectUtils.SoundLayer(Sound.ENTITY_SHULKER_SHOOT, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_SHULKER_AMBIENT, 0.5f, 1.4f));
         return true;
     }
 }
@@ -289,18 +337,25 @@ class DragonBreath extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 3.0);
         double duration = getDoubleParam(plugin, item, "duration", 5.0);
+        int harmAmp = getIntParam(plugin, item, "harm_amplifier", 0);
+        double range = getDoubleParam(plugin, item, "range", 15.0);
 
-        Block target = player.getTargetBlockExact(15);
+        Block target = player.getTargetBlockExact((int) range);
         Location spawnLoc = (target != null) ? target.getLocation().add(0.5, 1.0, 0.5) : player.getLocation();
 
-        player.getWorld().playSound(spawnLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.0f);
+        EffectUtils.fanfare(spawnLoc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_FLAP, 0.5f, 0.8f));
+        EffectUtils.burst(spawnLoc,
+                new EffectUtils.Layer(Particle.DRAGON_BREATH, 30, 0.4, 0.3, 0.4, 0.05),
+                new EffectUtils.Layer(Particle.PORTAL, 15, 0.4, 0.3, 0.4, 0.05));
 
         AreaEffectCloud cloud = (AreaEffectCloud) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.AREA_EFFECT_CLOUD);
         cloud.setParticle(Particle.DRAGON_BREATH);
         cloud.setRadius((float) radius);
         cloud.setDuration((int) (duration * 20));
         cloud.setWaitTime(0);
-        cloud.addCustomEffect(new PotionEffect(PotionEffectType.HARM, 1, 0), true);
+        cloud.addCustomEffect(new PotionEffect(PotionEffectType.HARM, 1, harmAmp), true);
 
         return true;
     }

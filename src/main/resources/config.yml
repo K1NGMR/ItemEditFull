@@ -28,6 +28,93 @@ abilities:
     health_heal: 4.0
     duration: 10.0
 
+  # Molten School expansion (20)
+  magma_armor:
+    cooldown: 25.0
+    duration: 12.0
+    resistance_amplifier: 1
+  obsidian_carapace:
+    cooldown: 22.0
+    duration: 8.0
+    dmg_reduction: 0.4
+    slow_amplifier: 1
+  molten_core:
+    cooldown: 15.0
+    bonus_damage: 6.0
+    window: 6.0
+    fire_ticks: 100
+  cinder_trail:
+    cooldown: 18.0
+    duration: 6.0
+    tick_damage: 1.0
+  lava_geyser:
+    cooldown: 16.0
+    radius: 3
+    damage: 5.0
+    launch: 1.2
+  molten_bulwark:
+    cooldown: 22.0
+    duration: 10.0
+    width: 3
+  searing_grip:
+    cooldown: 12.0
+    dot_damage: 2.0
+    dot_duration: 5.0
+  pyroclastic_burst:
+    cooldown: 20.0
+    radius: 5.0
+    blind_duration: 3.0
+  ember_wings:
+    cooldown: 25.0
+    duration: 5.0
+  volcanic_stomp:
+    cooldown: 18.0
+    radius: 6.0
+    damage: 7.0
+  ashen_footsteps:
+    cooldown: 20.0
+    duration: 10.0
+  thermal_vent:
+    cooldown: 25.0
+    duration: 15.0
+    tick_damage: 2.0
+    radius: 3.0
+  magma_tendrils:
+    cooldown: 18.0
+    range: 6.0
+    root_duration: 3.0
+  inferno_dash:
+    cooldown: 14.0
+    range: 6.0
+    damage: 5.0
+  molten_rain:
+    cooldown: 22.0
+    radius: 5.0
+    duration: 4.0
+    tick_damage: 1.5
+  heat_mirage:
+    cooldown: 20.0
+    duration: 8.0
+    miss_chance: 0.3
+  core_meltdown:
+    cooldown: 45.0
+    radius: 7.0
+    damage: 12.0
+    self_damage: 3.0
+  magma_golem:
+    cooldown: 40.0
+    lifetime: 20
+    golem_damage: 4.0
+  searing_brand:
+    cooldown: 15.0
+    bonus_damage: 2.0
+    hits: 3
+    mark_duration: 10.0
+  eruption_leap:
+    cooldown: 20.0
+    radius: 4.0
+    damage: 6.0
+
   # Warden Abilities (5)
   sonic_boom:
     cooldown: 8.0

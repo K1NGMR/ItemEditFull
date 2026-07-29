@@ -2,6 +2,8 @@ package com.itemedit.full.ability.undead;
 
 import com.itemedit.full.ItemEditFull;
 import com.itemedit.full.ability.Ability;
+import com.itemedit.full.utils.EffectUtils;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -27,8 +29,8 @@ import org.bukkit.util.Vector;
 import java.util.*;
 
 public class SkeletonAbilities implements Listener {
-    private static final Map<UUID, Long> activeShields = new HashMap<>();
-    private static final Map<UUID, Long> activeWitherStrikes = new HashMap<>();
+    private static final Map<UUID, Long> activeShields = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Long> activeWitherStrikes = new java.util.concurrent.ConcurrentHashMap<>();
     private static ItemEditFull pluginInstance;
 
     public static void register(ItemEditFull plugin) {
@@ -40,6 +42,13 @@ public class SkeletonAbilities implements Listener {
         plugin.getAbilityManager().registerAbility(new WitherSkeletonStrike(plugin));
         
         plugin.getServer().getPluginManager().registerEvents(new SkeletonAbilities(), plugin);
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        activeShields.remove(id);
+        activeWitherStrikes.remove(id);
     }
 
     public static void registerShield(UUID uuid, long expire) {
@@ -58,9 +67,15 @@ public class SkeletonAbilities implements Listener {
             if (expire != null && System.currentTimeMillis() < expire) {
                 event.setCancelled(true);
                 activeShields.remove(player.getUniqueId());
-                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BONE_BLOCK_BREAK, 1.5f, 0.8f);
-                player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 1.2f, 1.0f);
-                player.getWorld().spawnParticle(Particle.CRIT, player.getLocation().add(0, 1, 0), 20, 0.2, 0.4, 0.2, 0.1);
+                Location shatterLoc = player.getLocation().add(0, 1, 0);
+                EffectUtils.fanfare(shatterLoc,
+                        new EffectUtils.SoundLayer(Sound.BLOCK_BONE_BLOCK_BREAK, 1.5f, 0.8f),
+                        new EffectUtils.SoundLayer(Sound.ITEM_SHIELD_BREAK, 1.2f, 1.0f));
+                EffectUtils.burst(shatterLoc,
+                        new EffectUtils.Layer(Particle.CRIT, 20, 0.2, 0.4, 0.2, 0.1),
+                        new EffectUtils.Layer(Particle.DUST, 18, 0.3, 0.4, 0.3, 0,
+                                new Particle.DustOptions(Color.fromRGB(225, 222, 205), 1.3f)),
+                        new EffectUtils.Layer(Particle.CLOUD, 10, 0.25, 0.3, 0.25, 0.01));
                 player.sendMessage("§fYour Bone Shield shattered, absorbing the damage!");
             }
         }
@@ -75,10 +90,20 @@ public class SkeletonAbilities implements Listener {
                 activeWitherStrikes.remove(player.getUniqueId());
                 if (event.getEntity() instanceof LivingEntity) {
                     LivingEntity target = (LivingEntity) event.getEntity();
-                    target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 160, 1));
-                    event.setDamage(event.getDamage() + 4.0);
-                    target.getWorld().playSound(target.getLocation(), Sound.ENTITY_WITHER_SKELETON_HURT, 1.0f, 0.9f);
-                    target.getWorld().spawnParticle(Particle.SMOKE_NORMAL, target.getLocation().add(0, 1, 0), 10, 0.2, 0.3, 0.2, 0.05);
+                    ItemStack hand = player.getInventory().getItemInMainHand();
+                    Ability ab = pluginInstance.getAbilityManager().getAbility("wither_skeleton_strike");
+                    double witherDuration = ab != null ? ab.getDoubleParam(hand, "wither_duration", 8.0) : 8.0;
+                    int witherAmp = ab != null ? ab.getIntParam(hand, "wither_amplifier", 1) : 1;
+                    double extraDmg = ab != null ? ab.getDoubleParam(hand, "extra_damage", 4.0) : 4.0;
+                    
+                    target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (witherDuration * 20), witherAmp));
+                    event.setDamage(event.getDamage() + extraDmg);
+                    Location strikeLoc = target.getLocation().add(0, 1, 0);
+                    EffectUtils.fanfare(strikeLoc, new EffectUtils.SoundLayer(Sound.ENTITY_WITHER_SKELETON_HURT, 1.0f, 0.9f));
+                    EffectUtils.burst(strikeLoc,
+                            new EffectUtils.Layer(Particle.SMOKE_NORMAL, 10, 0.2, 0.3, 0.2, 0.05),
+                            new EffectUtils.Layer(Particle.SOUL_FIRE_FLAME, 8, 0.2, 0.3, 0.2, 0.02),
+                            new EffectUtils.Layer(Particle.CRIT, 6, 0.25, 0.3, 0.25, 0.05));
                 }
             }
         }
@@ -96,9 +121,15 @@ class BoneShield extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BONE_BLOCK_PLACE, 1.2f, 0.9f);
+        Location castLoc = player.getLocation().add(0, 1, 0);
+        EffectUtils.fanfare(castLoc, new EffectUtils.SoundLayer(Sound.BLOCK_BONE_BLOCK_PLACE, 1.2f, 0.9f));
+        EffectUtils.ring(castLoc, 0.8, 10, new EffectUtils.Layer(Particle.CRIT, 1, 0, 0.1, 0, 0));
+        EffectUtils.burst(castLoc, new EffectUtils.Layer(Particle.DUST, 12, 0.4, 0.4, 0.4, 0,
+                new Particle.DustOptions(Color.fromRGB(230, 226, 210), 1.1f)));
         SkeletonAbilities.registerShield(player.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
 
+        EffectUtils.Layer boneOrbitLayer = new EffectUtils.Layer(Particle.DUST, 1, 0, 0, 0, 0,
+                new Particle.DustOptions(Color.fromRGB(235, 232, 218), 0.9f));
         new CompatRunnable() {
             int ticks = 0;
             @Override
@@ -111,9 +142,12 @@ class BoneShield extends Ability {
                 double angle = (ticks * 0.5) % (2 * Math.PI);
                 Location particleLoc1 = pLoc.clone().add(Math.cos(angle) * 0.8, 0, Math.sin(angle) * 0.8);
                 Location particleLoc2 = pLoc.clone().add(Math.cos(angle + Math.PI) * 0.8, 0, Math.sin(angle + Math.PI) * 0.8);
-                
-                pLoc.getWorld().spawnParticle(Particle.CLOUD, particleLoc1, 1, 0, 0, 0, 0);
-                pLoc.getWorld().spawnParticle(Particle.CLOUD, particleLoc2, 1, 0, 0, 0, 0);
+
+                boneOrbitLayer.spawn(particleLoc1);
+                boneOrbitLayer.spawn(particleLoc2);
+                if (ticks % 3 == 0) {
+                    pLoc.getWorld().spawnParticle(Particle.CLOUD, particleLoc1, 1, 0, 0, 0, 0);
+                }
                 ticks++;
             }
         }.runTaskTimer(plugin, player, 0L, 5L);
@@ -133,15 +167,18 @@ class ArrowHail extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         int count = getIntParam(plugin, item, "arrows", 10);
+        double range = getDoubleParam(plugin, item, "range", 30.0);
 
-        Block target = player.getTargetBlockExact(30);
+        Block target = player.getTargetBlockExact((int) range);
         if (target == null) {
             player.sendMessage("§cNo target location in range.");
             return false;
         }
 
         Location targetLoc = target.getLocation().add(0.5, 0.5, 0.5);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SKELETON_SHOOT, 1.0f, 0.8f);
+        EffectUtils.fanfare(player.getLocation(), new EffectUtils.SoundLayer(Sound.ENTITY_SKELETON_SHOOT, 1.0f, 0.8f));
+        EffectUtils.ring(targetLoc, 2.0, 12, new EffectUtils.Layer(Particle.DUST, 1, 0, 0.05, 0, 0,
+                new Particle.DustOptions(Color.fromRGB(220, 218, 200), 1.0f)));
 
         for (int i = 0; i < count; i++) {
             new CompatRunnable() {
@@ -155,6 +192,9 @@ class ArrowHail extends Ability {
                     Arrow arrow = spawnLoc.getWorld().spawn(spawnLoc, Arrow.class);
                     arrow.setShooter(player);
                     arrow.setVelocity(new Vector(0, -1.5, 0));
+                    EffectUtils.burst(spawnLoc,
+                            new EffectUtils.Layer(Particle.CRIT, 3, 0.1, 0.1, 0.1, 0.02),
+                            new EffectUtils.Layer(Particle.CLOUD, 2, 0.05, 0.05, 0.05, 0));
                     spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_ARROW_SHOOT, 0.5f, 1.2f);
                 }
             }.runTaskLater(plugin, targetLoc, i * 2L);
@@ -175,16 +215,21 @@ class SkeletonArchers extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
         int skeletonsCount = getIntParam(plugin, item, "skeletons", 2);
+        String helmetMatStr = getStringParam(plugin, item, "helmet_material", "LEATHER_HELMET");
+        Material helmetMat = Material.matchMaterial(helmetMatStr);
+        if (helmetMat == null) helmetMat = Material.LEATHER_HELMET;
 
         Location loc = player.getLocation();
-        player.getWorld().playSound(loc, Sound.ENTITY_SKELETON_AMBIENT, 1.0f, 0.8f);
+        EffectUtils.fanfare(loc, new EffectUtils.SoundLayer(Sound.ENTITY_SKELETON_AMBIENT, 1.0f, 0.8f));
+        EffectUtils.ring(loc.clone().add(0, 0.1, 0), 1.5, 14, new EffectUtils.Layer(Particle.DUST, 1, 0, 0.1, 0, 0,
+                new Particle.DustOptions(Color.fromRGB(225, 222, 205), 1.0f)));
 
         List<Skeleton> summoned = new ArrayList<>();
         for (int i = 0; i < skeletonsCount; i++) {
             double angle = i * 2 * Math.PI / skeletonsCount;
             Location spawnLoc = loc.clone().add(Math.cos(angle) * 1.5, 0, Math.sin(angle) * 1.5);
             Skeleton skeleton = (Skeleton) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.SKELETON);
-            skeleton.getEquipment().setHelmet(new ItemStack(Material.LEATHER_HELMET));
+            skeleton.getEquipment().setHelmet(new ItemStack(helmetMat));
             skeleton.setMetadata("helper", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
             
             for (Entity entity : skeleton.getNearbyEntities(10.0, 5.0, 10.0)) {
@@ -201,7 +246,9 @@ class SkeletonArchers extends Ability {
             public void run() {
                 for (Skeleton s : summoned) {
                     if (s.isValid()) {
-                        s.getWorld().spawnParticle(Particle.SMOKE_NORMAL, s.getLocation().add(0, 1, 0), 10, 0.2, 0.3, 0.2, 0.01);
+                        EffectUtils.burst(s.getLocation().add(0, 1, 0),
+                                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 10, 0.2, 0.3, 0.2, 0.01),
+                                new EffectUtils.Layer(Particle.CRIT, 8, 0.2, 0.3, 0.2, 0.02));
                         s.remove();
                     }
                 }
@@ -223,8 +270,9 @@ class BoneTrap extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 3.0);
+        double range = getDoubleParam(plugin, item, "range", 8.0);
 
-        Entity target = player.getTargetEntity(8);
+        Entity target = player.getTargetEntity((int) range);
         if (!(target instanceof LivingEntity)) {
             player.sendMessage("§cNo target entity in range.");
             return false;
@@ -232,7 +280,9 @@ class BoneTrap extends Ability {
 
         LivingEntity living = (LivingEntity) target;
         Location loc = living.getLocation();
-        living.getWorld().playSound(loc, Sound.BLOCK_BONE_BLOCK_PLACE, 1.0f, 0.7f);
+        EffectUtils.fanfare(loc, new EffectUtils.SoundLayer(Sound.BLOCK_BONE_BLOCK_PLACE, 1.0f, 0.7f));
+        EffectUtils.ring(loc.clone().add(0, 0.1, 0), 1.0, 8, new EffectUtils.Layer(Particle.DUST, 1, 0, 0.3, 0, 0,
+                new Particle.DustOptions(Color.fromRGB(230, 226, 210), 1.2f)));
 
         new CompatRunnable() {
             int ticks = 0;
@@ -243,7 +293,14 @@ class BoneTrap extends Ability {
                     return;
                 }
                 living.teleport(loc);
+                double angle = ticks * 0.9;
+                Location bar1 = loc.clone().add(Math.cos(angle) * 0.9, 0.9, Math.sin(angle) * 0.9);
+                Location bar2 = loc.clone().add(Math.cos(angle + Math.PI) * 0.9, 0.9, Math.sin(angle + Math.PI) * 0.9);
                 living.getWorld().spawnParticle(Particle.CRIT, loc.clone().add(0, 0.5, 0), 6, 0.3, 0.5, 0.3, 0.05);
+                living.getWorld().spawnParticle(Particle.DUST, bar1, 2, 0, 0.2, 0, 0,
+                        new Particle.DustOptions(Color.fromRGB(230, 226, 210), 1.0f));
+                living.getWorld().spawnParticle(Particle.DUST, bar2, 2, 0, 0.2, 0, 0,
+                        new Particle.DustOptions(Color.fromRGB(230, 226, 210), 1.0f));
                 ticks++;
             }
         }.runTaskTimer(plugin, living, 0L, 5L);
@@ -264,7 +321,15 @@ class WitherSkeletonStrike extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
 
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SKELETON_AMBIENT, 1.0f, 0.9f);
+        Location chargeLoc = player.getLocation().add(0, 1, 0);
+        EffectUtils.fanfare(chargeLoc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_WITHER_SKELETON_AMBIENT, 1.0f, 0.9f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_SOUL_SAND_BREAK, 0.8f, 0.6f));
+        EffectUtils.burst(chargeLoc,
+                new EffectUtils.Layer(Particle.SOUL_FIRE_FLAME, 14, 0.3, 0.4, 0.3, 0.02),
+                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 10, 0.3, 0.4, 0.3, 0.01));
+        EffectUtils.ring(player.getLocation().add(0, 0.1, 0), 1.2, 10,
+                new EffectUtils.Layer(Particle.SOUL, 1, 0, 0.2, 0, 0));
         SkeletonAbilities.registerWitherStrike(player.getUniqueId(), System.currentTimeMillis() + (long) (duration * 1000));
         player.sendMessage("§8Wither Strike charged!");
         return true;

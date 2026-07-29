@@ -8,16 +8,18 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.Particle;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import com.itemedit.full.utils.CompatRunnable;
+import com.itemedit.full.utils.EffectUtils;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class LavaWalker extends Ability {
     private final ItemEditFull plugin;
-    private final Set<Location> modifiedBlocks = new HashSet<>();
+    private final Set<Location> modifiedBlocks = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public LavaWalker(ItemEditFull plugin) {
         super("lava_walker", "Lava Walker", "Allows you to walk on lava by turning it to obsidian/magma.");
@@ -28,9 +30,16 @@ public class LavaWalker extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
         int radius = getIntParam(plugin, item, "radius", 3);
+        double decayDuration = getDoubleParam(plugin, item, "decay_duration", 4.0);
 
         player.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, (int) (duration * 20), 0));
-        player.getWorld().playSound(player.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1.0f, 0.8f);
+
+        // Crust of cooling stone rippling outward from the player's feet as the ability engages.
+        EffectUtils.ring(player.getLocation(), Math.max(1.0, radius * 0.6), 16,
+                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 1, 0.05, 0.05, 0.05, 0.01));
+        EffectUtils.fanfare(player.getLocation(),
+                new EffectUtils.SoundLayer(Sound.ITEM_FIRECHARGE_USE, 1.0f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_LAVA_POP, 0.8f, 1.2f));
 
         new CompatRunnable() {
             int ticksElapsed = 0;
@@ -55,15 +64,21 @@ public class LavaWalker extends Ability {
                                     modifiedBlocks.add(blockLoc);
                                     block.setType(Material.MAGMA_BLOCK);
 
+                                    // Quick hiss of crust forming as each lava block solidifies underfoot.
+                                    EffectUtils.burst(blockLoc.clone().add(0.5, 0.6, 0.5),
+                                            new EffectUtils.Layer(Particle.SMOKE_NORMAL, 3, 0.15, 0.1, 0.15, 0.01));
+
                                     new CompatRunnable() {
                                         @Override
                                         public void run() {
                                             if (blockLoc.getBlock().getType() == Material.MAGMA_BLOCK) {
                                                 blockLoc.getBlock().setType(originalType);
+                                                EffectUtils.burst(blockLoc.clone().add(0.5, 0.6, 0.5),
+                                                        new EffectUtils.Layer(Particle.LAVA, 4, 0.2, 0.1, 0.2, 0.02));
                                             }
                                             modifiedBlocks.remove(blockLoc);
                                         }
-                                    }.runTaskLater(plugin, blockLoc, 80L);
+                                    }.runTaskLater(plugin, blockLoc, (long) (decayDuration * 20));
                                 }
                             }
                         }

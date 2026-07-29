@@ -24,21 +24,22 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import com.itemedit.full.utils.CompatRunnable;
+import com.itemedit.full.utils.EffectUtils;
 import org.bukkit.util.Vector;
 
 import java.util.*;
 
 public class GeneralAbilities implements Listener {
-    private static final Map<UUID, Long> activeOverloads = new HashMap<>();
-    private static final Map<UUID, Double> overloadDamage = new HashMap<>();
+    private static final Map<UUID, Long> activeOverloads = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Double> overloadDamage = new java.util.concurrent.ConcurrentHashMap<>();
     
-    private static final Map<UUID, Long> activeLifeSteals = new HashMap<>();
-    private static final Map<UUID, Double> lifeStealMultiplier = new HashMap<>();
+    private static final Map<UUID, Long> activeLifeSteals = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Double> lifeStealMultiplier = new java.util.concurrent.ConcurrentHashMap<>();
     
-    private static final Map<UUID, Long> activeThornySkins = new HashMap<>();
-    private static final Map<UUID, Double> thornyReflectPercent = new HashMap<>();
+    private static final Map<UUID, Long> activeThornySkins = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Double> thornyReflectPercent = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static final Map<UUID, Long> activePocketShields = new HashMap<>();
+    private static final Map<UUID, Long> activePocketShields = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static ItemEditFull pluginInstance;
 
@@ -89,6 +90,18 @@ public class GeneralAbilities implements Listener {
         plugin.getAbilityManager().registerAbility(new Adrenaline(plugin));
 
         plugin.getServer().getPluginManager().registerEvents(new GeneralAbilities(), plugin);
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        activeOverloads.remove(id);
+        overloadDamage.remove(id);
+        activeLifeSteals.remove(id);
+        lifeStealMultiplier.remove(id);
+        activeThornySkins.remove(id);
+        thornyReflectPercent.remove(id);
+        activePocketShields.remove(id);
     }
 
     public static void registerOverload(UUID uuid, long expire, double bonus) {
@@ -234,7 +247,13 @@ class Frostbite extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         Snowball ball = player.launchProjectile(Snowball.class);
         ball.setMetadata("frostbite", new FixedMetadataValue(plugin, true));
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SNOWBALL_THROW, 1.0f, 0.8f);
+        Location loc = player.getEyeLocation();
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.SNOWFLAKE, 14, 0.15, 0.15, 0.15, 0.02),
+                new EffectUtils.Layer(Particle.CLOUD, 6, 0.1, 0.1, 0.1, 0.01));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_SNOWBALL_THROW, 1.0f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_GLASS_BREAK, 0.5f, 1.7f));
         return true;
     }
 }
@@ -393,7 +412,13 @@ class Overload extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
         double bonus = getDoubleParam(plugin, item, "extra_damage", 2.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 1.5f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.ELECTRIC_SPARK, 20, 0.3, 0.6, 0.3, 0.08),
+                new EffectUtils.Layer(Particle.CRIT_MAGIC, 14, 0.3, 0.6, 0.3, 0.1));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.6f, 2.0f));
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, (int)(duration*20), 2));
         GeneralAbilities.registerOverload(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000), bonus);
         return true;
@@ -442,6 +467,9 @@ class WindBlade extends Ability {
         double damage = getDoubleParam(plugin, item, "damage", 5.0);
         Location origin = player.getEyeLocation();
         Vector dir = origin.getDirection().normalize();
+        EffectUtils.burst(origin,
+                new EffectUtils.Layer(Particle.CLOUD, 8, 0.15, 0.15, 0.15, 0.02),
+                new EffectUtils.Layer(Particle.SWEEP_ATTACK, 2, 0.1, 0.1, 0.1, 0));
         player.getWorld().playSound(origin, Sound.ENTITY_ARROW_SHOOT, 1.0f, 1.2f);
         new CompatRunnable() {
             int steps = 0;
@@ -452,6 +480,9 @@ class WindBlade extends Ability {
                 current.add(dir.clone().multiply(0.5));
                 com.itemedit.full.utils.SchedulerUtils.runTask(plugin, current, () -> {
                     current.getWorld().spawnParticle(Particle.CLOUD, current, 1, 0, 0, 0, 0);
+                    if (steps % 3 == 0) {
+                        current.getWorld().spawnParticle(Particle.SWEEP_ATTACK, current, 1, 0, 0, 0, 0);
+                    }
                     for (Entity entity : current.getWorld().getNearbyEntities(current, 0.8, 0.8, 0.8)) {
                         if (entity instanceof LivingEntity && !entity.equals(player)) {
                             ((LivingEntity) entity).damage(damage, player);
@@ -472,12 +503,18 @@ class TornadoLeap extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         Location loc = player.getLocation();
-        player.getWorld().playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.5f, 1.0f);
-        loc.getWorld().spawnParticle(Particle.CLOUD, loc, 20, 0.5, 0.2, 0.5, 0.1);
+        EffectUtils.spiral(plugin, player, loc.clone(), 1.2, 12, Math.PI / 3, 0.15, 1L,
+                new EffectUtils.Layer(Particle.CLOUD, 3, 0.1, 0.1, 0.1, 0.02));
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.CLOUD, 20, 0.5, 0.2, 0.5, 0.1),
+                new EffectUtils.Layer(Particle.FIREWORKS_SPARK, 10, 0.6, 0.2, 0.6, 0.05));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.5f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.ITEM_ELYTRA_FLYING, 0.5f, 1.4f));
         player.setVelocity(new Vector(0, 1.4, 0));
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, 5.0, 2.0, 5.0)) {
             if (entity instanceof LivingEntity && !entity.equals(player)) {
-                Vector dir = entity.getLocation().toVector().subtract(loc.toVector()).normalize();
+                Vector dir = com.itemedit.full.utils.VectorUtils.safeNormalize(entity.getLocation().toVector().subtract(loc.toVector()));
                 entity.setVelocity(dir.multiply(1.5).setY(0.4));
             }
         }
@@ -569,10 +606,16 @@ class DeathGrip extends Ability {
         double range = getDoubleParam(plugin, item, "range", 15.0);
         Entity target = player.getTargetEntity((int) range);
         if (!(target instanceof LivingEntity)) { player.sendMessage("§cNo target entity."); return false; }
-        Vector dir = player.getLocation().toVector().subtract(target.getLocation().toVector()).normalize();
+        Vector dir = com.itemedit.full.utils.VectorUtils.safeNormalize(player.getLocation().toVector().subtract(target.getLocation().toVector()));
         target.setVelocity(dir.multiply(1.8).setY(0.5));
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 0.8f, 1.5f);
-        target.getWorld().spawnParticle(Particle.PORTAL, target.getLocation(), 15, 0.2, 0.2, 0.2, 0.05);
+        Location tLoc = target.getLocation().add(0, 1, 0);
+        EffectUtils.ring(tLoc, 0.8, 10, new EffectUtils.Layer(Particle.PORTAL, 2, 0, 0.1, 0, 0.05));
+        EffectUtils.burst(tLoc,
+                new EffectUtils.Layer(Particle.PORTAL, 16, 0.2, 0.2, 0.2, 0.08),
+                new EffectUtils.Layer(Particle.SQUID_INK, 6, 0.2, 0.2, 0.2, 0));
+        EffectUtils.fanfare(tLoc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_SCREAM, 0.8f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_GHAST_SCREAM, 0.4f, 1.6f));
         return true;
     }
 }
@@ -585,6 +628,9 @@ class WaterSpout extends Ability {
         double damage = getDoubleParam(plugin, item, "damage", 3.0);
         Location origin = player.getEyeLocation();
         Vector dir = origin.getDirection().normalize();
+        EffectUtils.burst(origin,
+                new EffectUtils.Layer(Particle.WATER_SPLASH, 10, 0.15, 0.15, 0.15, 0.02),
+                new EffectUtils.Layer(Particle.WATER_BUBBLE, 8, 0.15, 0.15, 0.15, 0.02));
         player.getWorld().playSound(origin, Sound.ENTITY_BOAT_PADDLE_WATER, 1.0f, 1.2f);
         new CompatRunnable() {
             int steps = 0;
@@ -595,6 +641,7 @@ class WaterSpout extends Ability {
                 current.add(dir.clone().multiply(0.5));
                 com.itemedit.full.utils.SchedulerUtils.runTask(plugin, current, () -> {
                     current.getWorld().spawnParticle(Particle.WATER_SPLASH, current, 5, 0.05, 0.05, 0.05, 0.01);
+                    current.getWorld().spawnParticle(Particle.WATER_BUBBLE, current, 3, 0.05, 0.05, 0.05, 0.01);
                     for (Entity entity : current.getWorld().getNearbyEntities(current, 0.8, 0.8, 0.8)) {
                         if (entity instanceof LivingEntity && !entity.equals(player)) {
                             ((LivingEntity) entity).damage(damage, player);
@@ -625,7 +672,9 @@ class Whirlpool extends Ability {
             @Override
             public void run() {
                 if (ticks >= (duration * 20) || !player.isOnline()) { cancel(); return; }
-                center.getWorld().spawnParticle(Particle.WATER_SPLASH, center, 10, radius*0.5, 0.1, radius*0.5, 0.05);
+                EffectUtils.ring(center, radius * (0.3 + 0.2 * Math.sin(ticks * 0.2)), 12,
+                        new EffectUtils.Layer(Particle.WATER_SPLASH, 1, 0, 0.1, 0, 0.02));
+                center.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, center, 4, 0.3, 0.2, 0.3, 0.02);
                 center.getWorld().playSound(center, Sound.BLOCK_WATER_AMBIENT, 0.5f, 1.2f);
                 for (Entity vic : center.getWorld().getNearbyEntities(center, radius, 3.0, radius)) {
                     if (vic instanceof LivingEntity && !vic.equals(player)) {
@@ -646,12 +695,17 @@ class Magnet extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 8.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 0.8f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.END_ROD, 14, 0.4, 0.4, 0.4, 0.05),
+                new EffectUtils.Layer(Particle.CRIT_MAGIC, 8, 0.4, 0.4, 0.4, 0.02));
+        EffectUtils.fanfare(loc, new EffectUtils.SoundLayer(Sound.ENTITY_ITEM_PICKUP, 1.0f, 0.8f));
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof Item) {
                 Item dropped = (Item) entity;
                 Vector dir = player.getLocation().toVector().subtract(dropped.getLocation().toVector());
                 dropped.setVelocity(dir.normalize().multiply(1.0).setY(0.2));
+                dropped.getWorld().spawnParticle(Particle.END_ROD, dropped.getLocation(), 2, 0.05, 0.05, 0.05, 0.01);
             }
         }
         return true;
@@ -666,12 +720,14 @@ class GravityWell extends Ability {
         double radius = getDoubleParam(plugin, item, "radius", 5.0);
         double duration = getDoubleParam(plugin, item, "duration", 6.0);
         Location center = player.getLocation();
+        EffectUtils.fanfare(center, new EffectUtils.SoundLayer(Sound.ENTITY_WITHER_AMBIENT, 0.4f, 0.6f));
         new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
                 if (ticks >= (duration * 20) || !player.isOnline()) { cancel(); return; }
-                center.getWorld().spawnParticle(Particle.PORTAL, center, 15, radius*0.6, 0.1, radius*0.6, 0);
+                EffectUtils.ring(center, radius * 0.6, 14, new EffectUtils.Layer(Particle.SOUL, 1, 0, 0.1, 0, 0.01));
+                center.getWorld().spawnParticle(Particle.CRIT, center, 8, radius*0.3, 0.3, radius*0.3, 0.05);
                 for (Entity vic : center.getWorld().getNearbyEntities(center, radius, 4.0, radius)) {
                     if (vic instanceof LivingEntity && !vic.equals(player)) {
                         LivingEntity living = (LivingEntity) vic;
@@ -692,7 +748,14 @@ class Combust extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1.2f, 0.8f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.ring(loc, 1.0, 14, new EffectUtils.Layer(Particle.FLAME, 2, 0, 0.1, 0, 0.01));
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.LAVA, 8, 0.3, 0.5, 0.3, 0),
+                new EffectUtils.Layer(Particle.SMOKE_LARGE, 10, 0.3, 0.5, 0.3, 0.02));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ITEM_FIRECHARGE_USE, 1.2f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_BLAZE_AMBIENT, 0.6f, 1.0f));
         player.setFireTicks((int) (duration * 20));
         player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, (int)(duration*20), 1));
         return true;
@@ -706,7 +769,13 @@ class LifeSteal extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 8.0);
         double mult = getDoubleParam(plugin, item, "steal_multiplier", 0.3);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.8f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.HEART, 6, 0.3, 0.4, 0.3, 0.02),
+                new EffectUtils.Layer(Particle.SPELL_WITCH, 16, 0.3, 0.5, 0.3, 0.02));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.8f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_PLAYER_LEVELUP, 0.4f, 0.6f));
         GeneralAbilities.registerLifeSteal(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000), mult);
         return true;
     }
@@ -740,7 +809,13 @@ class HasteBoost extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 1.5f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.CRIT_MAGIC, 14, 0.3, 0.4, 0.3, 0.1),
+                new EffectUtils.Layer(Particle.END_ROD, 8, 0.2, 0.3, 0.2, 0.02));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.8f));
         player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, (int)(duration*20), 2));
         return true;
     }
@@ -748,17 +823,37 @@ class HasteBoost extends Ability {
 
 class Flight extends Ability {
     private final ItemEditFull plugin;
+    // Tracks the latest grant expiry per player so overlapping casts / relogs don't revoke early,
+    // keyed to the timestamp this cast set.
+    private static final java.util.Map<java.util.UUID, Long> flightGrants = new java.util.concurrent.ConcurrentHashMap<>();
     public Flight(ItemEditFull plugin) { super("flight", "Flight", "Allows flying for 10 seconds."); this.plugin = plugin; }
     @Override
     public boolean trigger(Player player, ItemStack item) {
+        // Don't touch flight for players who can already fly by gamemode (Creative/Spectator).
+        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE
+                || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) {
+            player.sendMessage("§eYou can already fly in this game mode.");
+            return true;
+        }
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
+        long grantId = System.currentTimeMillis();
+        flightGrants.put(player.getUniqueId(), grantId);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_TAKEOFF, 1.0f, 1.2f);
         player.setAllowFlight(true);
         player.setFlying(true);
         new CompatRunnable() {
             @Override
             public void run() {
-                if (player.isOnline()) {
+                // Only revoke if this is still the most recent grant (a newer cast supersedes it)
+                // and the player hasn't since entered a flight-capable game mode.
+                Long latest = flightGrants.get(player.getUniqueId());
+                if (latest == null || latest != grantId) {
+                    return;
+                }
+                flightGrants.remove(player.getUniqueId());
+                if (player.isOnline()
+                        && player.getGameMode() != org.bukkit.GameMode.CREATIVE
+                        && player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
                     player.setFlying(false);
                     player.setAllowFlight(false);
                     player.sendMessage("§cFlight has expired!");
@@ -775,7 +870,13 @@ class Vanish extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 15.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, 1.0f, 1.5f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.SMOKE_NORMAL, 18, 0.3, 0.6, 0.3, 0.03),
+                new EffectUtils.Layer(Particle.PORTAL, 12, 0.3, 0.6, 0.3, 0.05));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_PHANTOM_FLAP, 1.0f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDERMAN_TELEPORT, 0.4f, 1.4f));
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, (int)(duration*20), 0));
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, (int)(duration*20), 0));
         return true;
@@ -808,7 +909,12 @@ class ThornySkin extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 10.0);
         double percent = getDoubleParam(plugin, item, "reflect_percent", 0.3);
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_SWEET_BERRY_BUSH_PLACE, 1.0f, 0.8f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.ring(loc, 0.8, 12, new EffectUtils.Layer(Particle.CRIT, 2, 0, 0.1, 0, 0.02));
+        EffectUtils.burst(loc, new EffectUtils.Layer(Particle.VILLAGER_ANGRY, 6, 0.3, 0.4, 0.3, 0));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.BLOCK_SWEET_BERRY_BUSH_PLACE, 1.0f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.ENCHANT_THORNS_HIT, 0.5f, 1.2f));
         GeneralAbilities.registerThornySkin(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000), percent);
         return true;
     }
@@ -819,7 +925,12 @@ class SpringJump extends Ability {
     public SpringJump(ItemEditFull plugin) { super("spring_jump", "Spring Jump", "Super jump."); this.plugin = plugin; }
     @Override
     public boolean trigger(Player player, ItemStack item) {
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SLIME_JUMP, 1.2f, 1.5f);
+        Location loc = player.getLocation();
+        EffectUtils.ring(loc, 0.6, 10, new EffectUtils.Layer(Particle.CLOUD, 2, 0, 0, 0, 0.01));
+        EffectUtils.burst(loc, new EffectUtils.Layer(Particle.CRIT, 10, 0.3, 0.1, 0.3, 0.1));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_SLIME_JUMP, 1.2f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_RABBIT_JUMP, 0.6f, 1.5f));
         player.setVelocity(new Vector(0, 1.6, 0));
         return true;
     }
@@ -831,7 +942,13 @@ class FeatherFall extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 20.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0f, 1.2f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.CLOUD, 10, 0.3, 0.3, 0.3, 0.01),
+                new EffectUtils.Layer(Particle.END_ROD, 6, 0.2, 0.3, 0.2, 0.01));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_CHICKEN_EGG, 1.0f, 1.2f),
+                new EffectUtils.SoundLayer(Sound.ITEM_ELYTRA_FLYING, 0.4f, 1.6f));
         player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, (int)(duration*20), 0));
         return true;
     }
@@ -843,7 +960,12 @@ class PocketShield extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 5.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.0f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.ring(loc, 1.0, 16, new EffectUtils.Layer(Particle.END_ROD, 1, 0, 0, 0, 0));
+        EffectUtils.burst(loc, new EffectUtils.Layer(Particle.CRIT_MAGIC, 10, 0.3, 0.5, 0.3, 0.05));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.0f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_BEACON_ACTIVATE, 0.5f, 1.8f));
         GeneralAbilities.registerPocketShield(player.getUniqueId(), System.currentTimeMillis() + (long)(duration*1000));
         return true;
     }
@@ -939,12 +1061,15 @@ class DarkVortex extends Ability {
         Block target = player.getTargetBlockExact(20);
         if (target == null) return false;
         Location center = target.getLocation().add(0.5, 1.0, 0.5);
+        EffectUtils.fanfare(center, new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.6f, 0.5f));
         new CompatRunnable() {
             int ticks = 0;
             @Override
             public void run() {
                 if (ticks >= (duration * 20) || !player.isOnline()) { cancel(); return; }
-                center.getWorld().spawnParticle(Particle.PORTAL, center, 20, radius*0.5, 0.5, radius*0.5, 0);
+                EffectUtils.burst(center,
+                        new EffectUtils.Layer(Particle.PORTAL, 20, radius*0.5, 0.5, radius*0.5, 0),
+                        new EffectUtils.Layer(Particle.SMOKE_LARGE, 8, radius*0.3, 0.4, radius*0.3, 0.01));
                 center.getWorld().playSound(center, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.4f, 0.5f);
                 for (Entity entity : center.getWorld().getNearbyEntities(center, radius, 3.0, radius)) {
                     if (entity instanceof LivingEntity && !entity.equals(player)) {
@@ -968,7 +1093,10 @@ class Tsunami extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double damage = getDoubleParam(plugin, item, "damage", 4.0);
         Location loc = player.getLocation();
-        Vector dir = loc.getDirection().setY(0).normalize();
+        Vector dir = com.itemedit.full.utils.VectorUtils.safeNormalize(loc.getDirection().setY(0));
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.WATER_SPLASH, 20, 0.6, 0.3, 0.6, 0.05),
+                new EffectUtils.Layer(Particle.CLOUD, 10, 0.6, 0.2, 0.6, 0.02));
         player.getWorld().playSound(loc, Sound.BLOCK_WATER_AMBIENT, 1.5f, 0.8f);
         new CompatRunnable() {
             int step = 0;
@@ -978,7 +1106,8 @@ class Tsunami extends Ability {
                 if (step > 15 || !current.getBlock().getType().isAir()) { cancel(); return; }
                 current.add(dir);
                 com.itemedit.full.utils.SchedulerUtils.runTask(plugin, current, () -> {
-                    current.getWorld().spawnParticle(Particle.WATER_SPLASH, current, 15, 1.0, 0.5, 1.0, 0.05);
+                    EffectUtils.ring(current, 1.2, 8, new EffectUtils.Layer(Particle.WATER_SPLASH, 3, 0.1, 0.2, 0.1, 0.02));
+                    current.getWorld().spawnParticle(Particle.CLOUD, current, 2, 0.2, 0.1, 0.2, 0.01);
                     for (Entity entity : current.getWorld().getNearbyEntities(current, 1.5, 1.5, 1.5)) {
                         if (entity instanceof LivingEntity && !entity.equals(player)) {
                             ((LivingEntity) entity).damage(damage, player);
@@ -1001,12 +1130,18 @@ class Supernova extends Ability {
         double radius = getDoubleParam(plugin, item, "radius", 6.0);
         double damage = getDoubleParam(plugin, item, "damage", 10.0);
         Location loc = player.getLocation();
-        loc.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, loc, 12, 0.5, 0.5, 0.5, 0.1);
-        loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.8f);
+        EffectUtils.ring(loc, radius * 0.5, 20, new EffectUtils.Layer(Particle.FLAME, 3, 0, 0.2, 0, 0.02));
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.EXPLOSION_LARGE, 12, 0.5, 0.5, 0.5, 0.1),
+                new EffectUtils.Layer(Particle.LAVA, 10, 0.4, 0.4, 0.4, 0),
+                new EffectUtils.Layer(Particle.FIREWORKS_SPARK, 25, 0.6, 0.6, 0.6, 0.15));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.8f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 0.6f));
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, radius, 3.0, radius)) {
             if (entity instanceof LivingEntity && !entity.equals(player)) {
                 ((LivingEntity) entity).damage(damage, player);
-                entity.setVelocity(entity.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.8).setY(0.5));
+                entity.setVelocity(com.itemedit.full.utils.VectorUtils.safeNormalize(entity.getLocation().toVector().subtract(loc.toVector())).multiply(1.8).setY(0.5));
             }
         }
         return true;
@@ -1021,8 +1156,13 @@ class TimeFreeze extends Ability {
         double radius = getDoubleParam(plugin, item, "radius", 6.0);
         double duration = getDoubleParam(plugin, item, "duration", 3.0);
         Location loc = player.getLocation();
-        loc.getWorld().playSound(loc, Sound.BLOCK_GLASS_BREAK, 1.5f, 0.5f);
-        loc.getWorld().spawnParticle(Particle.SNOWFLAKE, loc, 30, radius*0.5, 1.0, radius*0.5, 0.05);
+        EffectUtils.ring(loc, radius * 0.6, 24, new EffectUtils.Layer(Particle.SNOWFLAKE, 2, 0, 0.3, 0, 0.01));
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.SNOWFLAKE, 30, radius*0.5, 1.0, radius*0.5, 0.05),
+                new EffectUtils.Layer(Particle.END_ROD, 14, radius*0.3, 0.5, radius*0.3, 0.02));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.BLOCK_GLASS_BREAK, 1.5f, 0.5f),
+                new EffectUtils.SoundLayer(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.6f, 0.4f));
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, radius, 3.0, radius)) {
             if (entity instanceof LivingEntity && !entity.equals(player)) {
                 LivingEntity living = (LivingEntity) entity;
@@ -1063,7 +1203,13 @@ class Adrenaline extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         if (player.getHealth() > 8.0) { player.sendMessage("§cYou must be below 4 hearts to use this!"); return false; }
         double duration = getDoubleParam(plugin, item, "duration", 8.0);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.5f);
+        Location loc = player.getLocation().add(0, 1, 0);
+        EffectUtils.burst(loc,
+                new EffectUtils.Layer(Particle.CRIT, 16, 0.3, 0.5, 0.3, 0.15),
+                new EffectUtils.Layer(Particle.DAMAGE_INDICATOR, 10, 0.3, 0.5, 0.3, 0.1));
+        EffectUtils.fanfare(loc,
+                new EffectUtils.SoundLayer(Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.5f),
+                new EffectUtils.SoundLayer(Sound.ENTITY_WOLF_GROWL, 0.6f, 0.6f));
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, (int)(duration*20), 2));
         player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, (int)(duration*20), 0));
         return true;

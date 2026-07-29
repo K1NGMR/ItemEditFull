@@ -36,6 +36,7 @@ class SonicBoom extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double damage = getDoubleParam(plugin, item, "damage", 6.0);
         double range = getDoubleParam(plugin, item, "range", 15.0);
+        double knockback = getDoubleParam(plugin, item, "knockback", 1.5);
 
         Location origin = player.getEyeLocation();
         Vector dir = origin.getDirection().normalize();
@@ -47,7 +48,7 @@ class SonicBoom extends Ability {
             for (Entity entity : point.getWorld().getNearbyEntities(point, 1.0, 1.0, 1.0)) {
                 if (entity instanceof LivingEntity && !entity.equals(player)) {
                     ((LivingEntity) entity).damage(damage, player);
-                    entity.setVelocity(dir.clone().multiply(1.5).setY(0.4));
+                    entity.setVelocity(dir.clone().multiply(knockback).setY(0.4));
                 }
             }
         }
@@ -67,6 +68,9 @@ class SculkInfestation extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 4.0);
         double duration = getDoubleParam(plugin, item, "duration", 5.0);
+        int darknessAmp = getIntParam(plugin, item, "darkness_amplifier", 0);
+        int slowAmp = getIntParam(plugin, item, "slow_amplifier", 1);
+        int witherAmp = getIntParam(plugin, item, "wither_amplifier", 0);
 
         Location loc = player.getLocation();
         player.getWorld().playSound(loc, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 1.2f, 0.8f);
@@ -80,9 +84,9 @@ class SculkInfestation extends Ability {
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, radius, 2.0, radius)) {
             if (entity instanceof LivingEntity && !entity.equals(player)) {
                 LivingEntity living = (LivingEntity) entity;
-                living.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, (int) (duration * 20), 0));
-                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, (int) (duration * 20), 1));
-                living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (duration * 20), 0));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, (int) (duration * 20), darknessAmp));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, (int) (duration * 20), slowAmp));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (duration * 20), witherAmp));
             }
         }
         return true;
@@ -101,6 +105,9 @@ class WardenSonicClap extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double damage = getDoubleParam(plugin, item, "damage", 4.0);
         double range = getDoubleParam(plugin, item, "range", 6.0);
+        double blindDuration = getDoubleParam(plugin, item, "blindness_duration", 4.0);
+        int blindAmp = getIntParam(plugin, item, "blindness_amplifier", 0);
+        double knockback = getDoubleParam(plugin, item, "knockback", 1.8);
 
         Location loc = player.getEyeLocation();
         Vector dir = loc.getDirection().normalize();
@@ -112,8 +119,8 @@ class WardenSonicClap extends Ability {
                 if (toEntity.normalize().dot(dir) > 0.7) {
                     LivingEntity living = (LivingEntity) entity;
                     living.damage(damage, player);
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 80, 0));
-                    living.setVelocity(dir.clone().multiply(1.8).setY(0.5));
+                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, (int) (blindDuration * 20), blindAmp));
+                    living.setVelocity(dir.clone().multiply(knockback).setY(0.5));
                 }
             }
         }
@@ -133,6 +140,10 @@ class SculkSensorTrap extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double damage = getDoubleParam(plugin, item, "damage", 6.0);
         double radius = getDoubleParam(plugin, item, "radius", 4.0);
+        double trapDuration = getDoubleParam(plugin, item, "trap_duration", 15.0);
+        double triggerRadius = getDoubleParam(plugin, item, "trigger_radius", 1.5);
+        double darknessDuration = getDoubleParam(plugin, item, "darkness_duration", 5.0);
+        int darknessAmp = getIntParam(plugin, item, "darkness_amplifier", 0);
 
         org.bukkit.block.Block targetBlock = player.getTargetBlockExact(5);
         Location target = targetBlock != null ? targetBlock.getLocation() : player.getLocation();
@@ -149,14 +160,14 @@ class SculkSensorTrap extends Ability {
             @Override
             public void run() {
                 ticks += 5;
-                if (ticks > 300) { // 15 seconds
+                if (ticks > (trapDuration * 20)) {
                     cancel();
                     return;
                 }
 
                 trapLoc.getWorld().spawnParticle(Particle.SCULK_CHARGE_POP, trapLoc, 1, 0.05, 0.05, 0.05, 0);
 
-                for (Entity entity : trapLoc.getWorld().getNearbyEntities(trapLoc, 1.5, 1.5, 1.5)) {
+                for (Entity entity : trapLoc.getWorld().getNearbyEntities(trapLoc, triggerRadius, triggerRadius, triggerRadius)) {
                     if (entity instanceof LivingEntity && !entity.equals(player)) {
                         trapLoc.getWorld().playSound(trapLoc, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 1.5f, 1.0f);
                         trapLoc.getWorld().spawnParticle(Particle.SONIC_BOOM, trapLoc, 1, 0, 0, 0, 0);
@@ -164,7 +175,7 @@ class SculkSensorTrap extends Ability {
                         for (Entity victim : trapLoc.getWorld().getNearbyEntities(trapLoc, radius, 3.0, radius)) {
                             if (victim instanceof LivingEntity && !victim.equals(player)) {
                                 ((LivingEntity) victim).damage(damage, player);
-                                ((LivingEntity) victim).addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 100, 0));
+                                ((LivingEntity) victim).addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, (int) (darknessDuration * 20), darknessAmp));
                             }
                         }
                         cancel();
@@ -189,11 +200,15 @@ class WardenRage extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 8.0);
+        int strengthAmp = getIntParam(plugin, item, "strength_amplifier", 1);
+        int resistanceAmp = getIntParam(plugin, item, "resistance_amplifier", 1);
+        double darknessDuration = getDoubleParam(plugin, item, "darkness_duration", 3.0);
+        int darknessAmp = getIntParam(plugin, item, "darkness_amplifier", 0);
 
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_ROAR, 1.2f, 1.0f);
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, (int) (duration * 20), 1));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, (int) (duration * 20), 1));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, (int) (duration * 20), strengthAmp));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, (int) (duration * 20), resistanceAmp));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, (int) (darknessDuration * 20), darknessAmp));
 
         new CompatRunnable() {
             int ticks = 0;

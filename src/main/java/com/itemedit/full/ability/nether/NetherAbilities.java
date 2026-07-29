@@ -64,15 +64,21 @@ public class NetherAbilities implements Listener {
             double damage = entity.getMetadata("meteor_damage").get(0).asDouble();
             double radius = entity.getMetadata("meteor_radius").get(0).asDouble();
             int size = entity.getMetadata("meteor_size").get(0).asInt();
-            Player shooter = (Player) event.getEntity().getShooter();
+            // Shooter may be null (disconnected / projectile outlived owner) or a non-player.
+            org.bukkit.projectiles.ProjectileSource source = event.getEntity().getShooter();
+            Player shooter = (source instanceof Player) ? (Player) source : null;
 
-            Location loc = event.getHitBlock() != null ? 
+            Location loc = event.getHitBlock() != null ?
                 event.getHitBlock().getLocation().add(0.5, 1.0, 0.5) : entity.getLocation();
+
+            ItemStack hand = shooter != null ? shooter.getInventory().getItemInMainHand() : null;
+            Ability ab = pluginInstance.getAbilityManager().getAbility("meteor_strike");
+            double knockback = ab != null ? ab.getDoubleParam(hand, "knockback", 0.8) : 0.8;
 
             for (Entity vic : loc.getWorld().getNearbyEntities(loc, radius, radius, radius)) {
                 if (vic instanceof LivingEntity && !vic.equals(shooter)) {
                     ((LivingEntity) vic).damage(damage, shooter);
-                    vic.setVelocity(vic.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(0.8).setY(0.4));
+                    vic.setVelocity(com.itemedit.full.utils.VectorUtils.safeNormalize(vic.getLocation().toVector().subtract(loc.toVector())).multiply(knockback).setY(0.4));
                 }
             }
 
@@ -143,10 +149,12 @@ class BlazeRodVolley extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         Vector dir = player.getEyeLocation().getDirection().normalize();
+        double velocity = getDoubleParam(plugin, item, "velocity", 1.5);
+        double angle = getDoubleParam(plugin, item, "angle", 8.0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.2f, 1.0f);
 
         for (int i = -2; i <= 2; i++) {
-            double angleRad = Math.toRadians(i * 8);
+            double angleRad = Math.toRadians(i * angle);
             double cos = Math.cos(angleRad);
             double sin = Math.sin(angleRad);
             double x = dir.getX() * cos - dir.getZ() * sin;
@@ -154,7 +162,7 @@ class BlazeRodVolley extends Ability {
             Vector spreadDir = new Vector(x, dir.getY(), z);
 
             SmallFireball sb = player.launchProjectile(SmallFireball.class);
-            sb.setVelocity(spreadDir.multiply(1.5));
+            sb.setVelocity(spreadDir.multiply(velocity));
             sb.setMetadata("custom_ability", new FixedMetadataValue(plugin, true));
         }
         return true;
@@ -172,8 +180,9 @@ class MagmaSpit extends Ability {
     @Override
     public boolean trigger(Player player, ItemStack item) {
         double duration = getDoubleParam(plugin, item, "duration", 5.0);
+        double range = getDoubleParam(plugin, item, "range", 10.0);
 
-        Entity target = player.getTargetEntity(10);
+        Entity target = player.getTargetEntity((int) range);
         if (!(target instanceof LivingEntity)) {
             player.sendMessage("§cNo target entity in sight.");
             return false;
@@ -210,6 +219,9 @@ class WitherBlast extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double radius = getDoubleParam(plugin, item, "radius", 6.0);
         double damage = getDoubleParam(plugin, item, "damage", 6.0);
+        double witherDuration = getDoubleParam(plugin, item, "wither_duration", 5.0);
+        int witherAmp = getIntParam(plugin, item, "wither_amplifier", 1);
+        double knockback = getDoubleParam(plugin, item, "knockback", 1.5);
 
         Location loc = player.getLocation();
         loc.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, loc, 1, 0, 0, 0, 0);
@@ -219,8 +231,8 @@ class WitherBlast extends Ability {
             if (vic instanceof LivingEntity && !vic.equals(player)) {
                 LivingEntity living = (LivingEntity) vic;
                 living.damage(damage, player);
-                living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 100, 1));
-                living.setVelocity(living.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.4));
+                living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int) (witherDuration * 20), witherAmp));
+                living.setVelocity(com.itemedit.full.utils.VectorUtils.safeNormalize(living.getLocation().toVector().subtract(loc.toVector())).multiply(knockback).setY(0.4));
             }
         }
         return true;
@@ -245,8 +257,9 @@ class MeteorStrikeGeneric extends Ability {
     public boolean trigger(Player player, ItemStack item) {
         double customDamage = getDoubleParam(plugin, item, "damage", damage);
         double customRadius = getDoubleParam(plugin, item, "radius", radius);
+        double range = getDoubleParam(plugin, item, "range", 30.0);
 
-        Block target = player.getTargetBlockExact(30);
+        Block target = player.getTargetBlockExact((int) range);
         if (target == null) {
             player.sendMessage("§cNo target location in range.");
             return false;
@@ -274,7 +287,12 @@ class MeteorStrikeGeneric extends Ability {
                     cancel();
                     return;
                 }
-                meteor.getWorld().spawnParticle(Particle.FLAME, meteor.getLocation(), 4, 0.1, 0.1, 0.1, 0.02);
+                Location loc = meteor.getLocation();
+                loc.getWorld().spawnParticle(Particle.FLAME, loc, 4 + size * 2, 0.15, 0.15, 0.15, 0.03);
+                loc.getWorld().spawnParticle(Particle.SMOKE_LARGE, loc, 2 + size, 0.1, 0.1, 0.1, 0.01);
+                if (size >= 3) {
+                    loc.getWorld().spawnParticle(Particle.LAVA, loc, 1, 0.05, 0.05, 0.05, 0);
+                }
                 ticks++;
             }
         }.runTaskTimer(plugin, meteor, 0L, 2L);

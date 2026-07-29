@@ -17,9 +17,12 @@ import java.util.*;
 
 public class AbilityManager implements Listener {
     private final ItemEditFull plugin;
-    private final Map<String, Ability> registry = new HashMap<>();
-    private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
+    private final Map<String, Ability> registry = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, Map<String, Long>> cooldowns = new java.util.concurrent.ConcurrentHashMap<>();
     private final NamespacedKey abilitiesKey;
+
+    /** Sentinel cooldown key (not a real ability id) used to suppress all item-ability triggers for a player. */
+    private static final String SILENCE_KEY = "__silenced__";
 
     public AbilityManager(ItemEditFull plugin) {
         this.plugin = plugin;
@@ -31,7 +34,14 @@ public class AbilityManager implements Listener {
     }
 
     public boolean registerAbility(Ability ability) {
-        registry.put(ability.getId().toLowerCase(), ability);
+        String key = ability.getId().toLowerCase();
+        Ability existing = registry.putIfAbsent(key, ability);
+        if (existing != null) {
+            plugin.getLogger().warning("Duplicate ability id '" + key + "' from "
+                    + ability.getClass().getSimpleName() + " ignored; already registered by "
+                    + existing.getClass().getSimpleName() + ".");
+            return false;
+        }
         return true;
     }
 
@@ -40,7 +50,42 @@ public class AbilityManager implements Listener {
     }
 
     public Ability getAbility(String id) {
-        return registry.get(id.toLowerCase());
+        if (id == null) {
+            return null;
+        }
+        String normalizedInput = id.toLowerCase().replace("_", "").replace(" ", "");
+        Ability direct = registry.get(id.toLowerCase());
+        if (direct != null) {
+            return direct;
+        }
+        for (Ability ability : registry.values()) {
+            String normalizedId = ability.getId().toLowerCase().replace("_", "").replace(" ", "");
+            if (normalizedId.equals(normalizedInput)) {
+                return ability;
+            }
+        }
+        for (Ability ability : registry.values()) {
+            String className = ability.getClass().getSimpleName().toLowerCase().replace("_", "").replace(" ", "");
+            if (className.equals(normalizedInput)) {
+                return ability;
+            }
+        }
+        if (normalizedInput.equals("gojo")) {
+            for (Ability ability : registry.values()) {
+                if (ability.getClass().getSimpleName().equals("GojoInfinity")) {
+                    return ability;
+                }
+            }
+        }
+        for (Ability ability : registry.values()) {
+            if (ability.getName() != null) {
+                String normalizedName = ability.getName().toLowerCase().replace("_", "").replace(" ", "");
+                if (normalizedName.equals(normalizedInput)) {
+                    return ability;
+                }
+            }
+        }
+        return null;
     }
 
     public List<String> getItemAbilities(ItemStack item) {
@@ -57,6 +102,21 @@ public class AbilityManager implements Listener {
             return Collections.emptyList();
         }
         return new ArrayList<>(Arrays.asList(data.split(",")));
+    }
+
+    /** Suppresses all item-ability triggers for this player for the given duration. Used by silence/hex effects. */
+    public void silencePlayer(Player player, long durationMillis) {
+        Map<String, Long> playerCooldowns = cooldowns.computeIfAbsent(player.getUniqueId(), k -> new java.util.concurrent.ConcurrentHashMap<>());
+        playerCooldowns.put(SILENCE_KEY, System.currentTimeMillis() + durationMillis);
+    }
+
+    public boolean isSilenced(Player player) {
+        Map<String, Long> playerCooldowns = cooldowns.get(player.getUniqueId());
+        if (playerCooldowns == null) {
+            return false;
+        }
+        Long expire = playerCooldowns.get(SILENCE_KEY);
+        return expire != null && System.currentTimeMillis() < expire;
     }
 
     public void setItemAbilities(ItemStack item, List<String> abilities) {
@@ -100,6 +160,12 @@ public class AbilityManager implements Listener {
             return;
         }
 
+        if (isSilenced(player)) {
+            player.sendActionBar(Component.text("§cYour abilities are silenced!"));
+            event.setCancelled(true);
+            return;
+        }
+
         long now = System.currentTimeMillis();
         for (String abilityId : abilityIds) {
             Ability ability = getAbility(abilityId);
@@ -110,14 +176,15 @@ public class AbilityManager implements Listener {
             // Check Cooldown (supports custom per-item cooldowns)
             double cooldownSec = ability.getDoubleParam(plugin, item, "cooldown", 5.0);
 
-            Map<String, Long> playerCooldowns = cooldowns.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
+            Map<String, Long> playerCooldowns = cooldowns.computeIfAbsent(player.getUniqueId(), k -> new java.util.concurrent.ConcurrentHashMap<>());
             long cooldownEnd = playerCooldowns.getOrDefault(abilityId, 0L);
 
             if (now < cooldownEnd) {
                 double remaining = (cooldownEnd - now) / 1000.0;
                 player.sendActionBar(Component.text("§c" + ability.getName() + " is on cooldown! (" + String.format("%.1f", remaining) + "s remaining)"));
                 event.setCancelled(true);
-                return;
+                // Skip only this ability; other abilities on the same item may still fire.
+                continue;
             }
 
             // Trigger the ability
@@ -158,5 +225,10 @@ public class AbilityManager implements Listener {
                 return;
             }
         }
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        cooldowns.remove(event.getPlayer().getUniqueId());
     }
 }
